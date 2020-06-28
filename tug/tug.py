@@ -5,8 +5,7 @@ import youtube_dl
 import asyncio
 
 from ply import lex
-from redbot.core import checks, Config
-from redbot.core import commands
+from redbot.core import checks, commands, Config
 from redbot.core.utils.chat_formatting import box, pagify, inline
 
 HSTRING = """The counter commands are the following:
@@ -20,7 +19,7 @@ HSTRING = """The counter commands are the following:
 {0.prefix}helpmoney         Displays this help text.
 """
 
-class CTUG(commands.Cog):
+class TUG(commands.Cog):
     def __init__(self, bot, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bot = bot
