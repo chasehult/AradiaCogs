@@ -1,13 +1,10 @@
 import json
 import re
 import discord.utils
-import youtube_dl
 import asyncio
 
-from ply import lex
 from collections import namedtuple
-from redbot.core import checks, Config
-from redbot.core import commands
+from redbot.core import checks, Config, commands
 from redbot.core.utils.chat_formatting import box, pagify, inline
 
 EmbedField = namedtuple("EmbedField", "name value inline")
