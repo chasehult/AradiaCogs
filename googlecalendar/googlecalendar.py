@@ -41,6 +41,7 @@ def discordify_format(desc):
     desc = re.sub(r"</?(?:b|strong)>", "**", desc)
     desc = re.sub(r"</?(?:i|em)>", "*", desc)
     desc = re.sub(r"</?(?:u|ul)>", "__", desc)
+    desc = re.sub(r"<.+?>", "", desc)
     return desc
 
 
@@ -73,7 +74,7 @@ class CalEvent:
         self.description = data.get('description', '')
 
     def to_embed(self):
-        diffsecs = int((self.time - datetime.datetime.now()).total_seconds())
+        diffsecs = int((self.time - datetime.datetime.utcnow()).total_seconds())
         embed = discord.Embed()
         embed.title = self.summary
         embed.description = discordify_format(self.description)
@@ -83,7 +84,7 @@ class CalEvent:
         return embed
 
     def is_valid(self):
-        return self.time > datetime.datetime.now()
+        return self.time > datetime.datetime.utcnow()
 
 
 class GoogleCalendar(commands.Cog):
