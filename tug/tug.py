@@ -1,12 +1,9 @@
+import asyncio
 import json
 import re
-import discord.utils
-import youtube_dl
-import asyncio
-
 from ply import lex
-from redbot.core import checks, commands, Config
-from redbot.core.utils.chat_formatting import box, pagify, inline
+from redbot.core import Config, checks, commands
+from redbot.core.utils.chat_formatting import box, inline, pagify
 
 HSTRING = """The counter commands are the following:
 {0.prefix}addmoney          Add money to your team's counter.
@@ -19,32 +16,43 @@ HSTRING = """The counter commands are the following:
 {0.prefix}helpmoney         Displays this help text.
 """
 
+
 class TUG(commands.Cog):
     def __init__(self, bot, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bot = bot
 
         self.config = Config.get_conf(self, identifier=7375707)
-        self.config.register_role(counter=0, cstr="The counter for {role} is {amount}.", private=True, valid=False)
+        self.config.register_role(counter=0,
+                                  cstr="The counter for {role} is {amount}.",
+                                  private=True, valid=False)
         self.config.register_user(drole={})
 
     @commands.command()
     @commands.guild_only()
     async def addmoney(self, ctx, amount: int, *, role: discord.Role = None):
-        role = role or ctx.guild.get_role((await self.config.user(ctx.author).drole()).get(str(ctx.guild.id)))
+        role = role or ctx.guild.get_role(
+            (await self.config.user(ctx.author).drole()).get(str(ctx.guild.id)))
         if role is None:
-            await ctx.send(("Either you don't have a default role set or your default role has been "
-                            "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(ctx))
+            await ctx.send((
+                               "Either you don't have a default role set or your default role has been "
+                               "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(
+                ctx))
             return
         if not await self.config.role(role).valid():
             await ctx.send("That role is not set up for a counter.")
             return
-        if role not in ctx.author.roles and not ctx.channel.permissions_for(ctx.author).administrator:
-            await ctx.send("You don't have permission to change that role's counter!")
+        if role not in ctx.author.roles and not ctx.channel.permissions_for(
+                ctx.author).administrator:
+            await ctx.send(
+                "You don't have permission to change that role's counter!")
             return
-        await self.config.role(role).counter.set(amount + await self.config.role(role).counter())
+        await self.config.role(role).counter.set(
+            amount + await self.config.role(role).counter())
         cstr = await self.config.role(role).cstr()
-        await ctx.send(cstr.format(role=role.name, amount=await self.config.role(role).counter()))
+        await ctx.send(cstr.format(role=role.name,
+                                   amount=await self.config.role(
+                                       role).counter()))
 
     @commands.command()
     @commands.guild_only()
@@ -52,31 +60,42 @@ class TUG(commands.Cog):
     async def setmoney(self, ctx, amount: int, *, role: discord.Role):
         await self.config.role(role).counter.set(amount)
         cstr = await self.config.role(role).cstr()
-        await ctx.send(cstr.format(role=role.name, amount=await self.config.role(role).counter()))
+        await ctx.send(cstr.format(role=role.name,
+                                   amount=await self.config.role(
+                                       role).counter()))
 
     @commands.command()
     @commands.guild_only()
     async def getmoney(self, ctx, *, role: discord.Role = None):
-        role = role or ctx.guild.get_role((await self.config.user(ctx.author).drole()).get(str(ctx.guild.id)))
+        role = role or ctx.guild.get_role(
+            (await self.config.user(ctx.author).drole()).get(str(ctx.guild.id)))
         if role is None:
-            await ctx.send(("Either you don't have a default role set or your default role has been "
-                            "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(ctx))
+            await ctx.send((
+                               "Either you don't have a default role set or your default role has been "
+                               "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(
+                ctx))
             return
         if not await self.config.role(role).valid():
             await ctx.send("That role is not set up for a counter.")
             return
-        if role not in ctx.author.roles and not ctx.channel.permissions_for(ctx.author).administrator \
+        if role not in ctx.author.roles and not ctx.channel.permissions_for(
+                ctx.author).administrator \
                 and await self.config.role(role).private():
-            await ctx.send("You don't have permission to get that role's counter!")
+            await ctx.send(
+                "You don't have permission to get that role's counter!")
             return
         cstr = await self.config.role(role).cstr()
-        await ctx.send(cstr.format(role=role.name, amount=await self.config.role(role).counter()))
+        await ctx.send(cstr.format(role=role.name,
+                                   amount=await self.config.role(
+                                       role).counter()))
 
     @commands.command()
     @commands.guild_only()
     async def setcstr(self, ctx, role: discord.Role, *, cstr):
-        if role not in ctx.author.roles and not ctx.channel.permissions_for(ctx.author).administrator:
-            await ctx.send("You don't have permission to change that role's cstr!")
+        if role not in ctx.author.roles and not ctx.channel.permissions_for(
+                ctx.author).administrator:
+            await ctx.send(
+                "You don't have permission to change that role's cstr!")
             return
         await self.config.role(role).cstr.set(cstr)
         await ctx.send(inline("Done"))
@@ -111,8 +130,10 @@ class TUG(commands.Cog):
     @commands.command()
     @commands.guild_only()
     async def getroleinfo(self, ctx, *, role: discord.Role):
-        await ctx.send(box("Private: {}\nValid: {}".format(await self.config.role(role).private(),
-                                                       await self.config.role(role).valid())))
+        await ctx.send(box("Private: {}\nValid: {}".format(
+            await self.config.role(role).private(),
+            await self.config.role(role).valid())))
+
     @commands.command()
     async def helpmoney(self, ctx):
         await ctx.send(box(HSTRING.format(ctx)))

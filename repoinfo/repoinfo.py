@@ -1,13 +1,13 @@
+import asyncio
+import discord.utils
 import json
 import re
-import discord.utils
-import asyncio
-
 from collections import namedtuple
-from redbot.core import checks, Config, commands
-from redbot.core.utils.chat_formatting import box, pagify, inline
+from redbot.core import Config, checks, commands
+from redbot.core.utils.chat_formatting import box, inline, pagify
 
 EmbedField = namedtuple("EmbedField", "name value inline")
+
 
 class RepoInfo(commands.Cog):
     def __init__(self, bot, *args, **kwargs):
@@ -15,7 +15,6 @@ class RepoInfo(commands.Cog):
         self.bot = bot
 
         self.config = Config.get_conf(self, identifier=23901770)
-
 
     @commands.command()
     async def repoinfo(self, ctx, repo_name):
@@ -25,8 +24,9 @@ class RepoInfo(commands.Cog):
             return
         repo = DLCOG._repo_manager.get_repo(repo_name)
         if repo is None:
-            await ctx.send(box("Repo not found.\n\nAvaliable Repos:\n"+
-                               "\n".join(DLCOG._repo_manager.get_all_repo_names())))
+            await ctx.send(box("Repo not found.\n\nAvaliable Repos:\n" +
+                               "\n".join(
+                                   DLCOG._repo_manager.get_all_repo_names())))
             return
         extensions = [i.name for i in repo.available_cogs]
         cogs = filter(lambda x: x.__module__.split(".")[0] in extensions,
@@ -36,17 +36,18 @@ class RepoInfo(commands.Cog):
         rhf = commands.help.RedHelpFormatter()
         coms = [(
             cog.__cog_name__,
-            await commands.help.RedHelpFormatter().get_cog_help_mapping(ctx, cog, hs)
+            await commands.help.RedHelpFormatter().get_cog_help_mapping(ctx,
+                                                                        cog, hs)
         ) for cog in cogs]
 
         if not coms:
             await ctx.send(inline("There are no loaded cogs on the repo!"))
             return
 
-
         if await ctx.embed_requested():
 
-            emb = {"embed": {"title": "", "description": ""}, "footer": {"text": ""}, "fields": []}
+            emb = {"embed": {"title": "", "description": ""},
+                   "footer": {"text": ""}, "fields": []}
 
             for cog_name, data in coms:
 
@@ -61,11 +62,13 @@ class RepoInfo(commands.Cog):
                     return a_line[:67] + "..."
 
                 cog_text = "\n".join(
-                    shorten_line(f"**{name}** {command.format_shortdoc_for_context(ctx)}")
+                    shorten_line(
+                        f"**{name}** {command.format_shortdoc_for_context(ctx)}")
                     for name, command in sorted(data.items())
                 )
 
-                for i, page in enumerate(pagify(cog_text, page_length=1000, shorten_by=0)):
+                for i, page in enumerate(
+                        pagify(cog_text, page_length=1000, shorten_by=0)):
                     title = title if i < 1 else f"{title} (continued)"
                     field = EmbedField(title, page, False)
                     emb["fields"].append(field)
@@ -79,7 +82,9 @@ class RepoInfo(commands.Cog):
             for k, v in coms:
                 names.extend(list(v.name for v in v.values()))
 
-            max_width = max(discord.utils._string_width(name or "No Category:") for name in names)
+            max_width = max(
+                discord.utils._string_width(name or "No Category:") for name in
+                names)
 
             def width_maker(cmds):
                 doc_max_width = 80 - max_width

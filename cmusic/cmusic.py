@@ -1,11 +1,10 @@
+import asyncio
+import discord.utils
 import json
 import re
-import discord.utils
 import youtube_dl
-import asyncio
-
 from ply import lex
-from redbot.core import checks, Config
+from redbot.core import Config, checks
 from redbot.core import commands
 from redbot.core.utils.chat_formatting import box, pagify
 
@@ -19,7 +18,6 @@ old_invite = None
 # Suppress noise about console usage from errors
 youtube_dl.utils.bug_reports_message = lambda: ''
 
-
 ytdl_format_options = {
     'format': 'bestaudio/best',
     'outtmpl': '%(extractor)s-%(id)s-%(title)s.%(ext)s',
@@ -31,7 +29,8 @@ ytdl_format_options = {
     'quiet': True,
     'no_warnings': True,
     'default_search': 'auto',
-    'source_address': '0.0.0.0' # bind to ipv4 since ipv6 addresses cause issues sometimes
+    'source_address': '0.0.0.0'
+    # bind to ipv4 since ipv6 addresses cause issues sometimes
 }
 
 ffmpeg_options = {
@@ -39,6 +38,7 @@ ffmpeg_options = {
 }
 
 ytdl = youtube_dl.YoutubeDL(ytdl_format_options)
+
 
 class YTDLSource(discord.PCMVolumeTransformer):
     def __init__(self, source, *, data, volume=0.5):
@@ -58,7 +58,9 @@ class YTDLSource(discord.PCMVolumeTransformer):
             data = data['entries'][0]
 
         filename = data['url'] if stream else ytdl.prepare_filename(data)
-        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options), data=data)
+        return cls(discord.FFmpegPCMAudio(filename, **ffmpeg_options),
+                   data=data)
+
 
 class CMusic(commands.Cog):
     """Just for me~"""
@@ -79,7 +81,6 @@ class CMusic(commands.Cog):
         |   |   loop: bool
         """
 
-
     def cog_unload(self):
         global old_invite
         if old_invite:
@@ -94,8 +95,7 @@ class CMusic(commands.Cog):
         await asyncio.sleep(5)
         await rpadutils.doubleup(ctx, "Done!")
 
-
-    @commands.command(aliases = ["join"])
+    @commands.command(aliases=["join"])
     async def connect(self, ctx):
         """Joins a voice channel."""
         try:
@@ -104,9 +104,11 @@ class CMusic(commands.Cog):
         except discord.ClientException:
             pass
         except Exception as e:
-            await ctx.send("My botmaster (Aradia Megido#2552) needs to implement the error: " + repr(e))
+            await ctx.send(
+                "My botmaster (Aradia Megido#2552) needs to implement the error: " + repr(
+                    e))
 
-    @commands.command(aliases = ["leave"])
+    @commands.command(aliases=["leave"])
     async def disconnect(self, ctx):
         """Leaves a voice channel."""
         try:
@@ -117,7 +119,9 @@ class CMusic(commands.Cog):
             await self.config.guild(ctx.guild).queue.set([])
             await self.config.guild(ctx.guild).cid.set(None)
         except Exception as e:
-            await ctx.send("My botmaster (Aradia Megido#2552) needs to implement the error: " + str(e))
+            await ctx.send(
+                "My botmaster (Aradia Megido#2552) needs to implement the error: " + str(
+                    e))
 
     @commands.command()
     @checks.is_owner()
@@ -127,7 +131,7 @@ class CMusic(commands.Cog):
 
     @commands.command()
     async def play(self, ctx, *, url):
-        song = YTDL(url, stream = True)
+        song = YTDL(url, stream=True)
         await self._play(ctx, song)
 
     async def _play(self, ctx, song):
@@ -139,7 +143,9 @@ class CMusic(commands.Cog):
             queue.append(song.sterilize())
         vc = discord.utils.get(self.bot.voice_clients, channel__id=cid)
         if vc and start:
-            vc.play(song.make(), after=await self.after_wrapper(ctx, cid, await self.make_data(ctx.guild)))
+            vc.play(song.make(), after=await self.after_wrapper(ctx, cid,
+                                                                await self.make_data(
+                                                                    ctx.guild)))
         else:
             print(queue, start, vc)
 
@@ -159,7 +165,8 @@ class CMusic(commands.Cog):
                 await self.config.guild(ctx.guild).cid.set(vc.channel.id)
             else:
                 await ctx.send("You are not connected to a voice channel.")
-                raise commands.CommandError("Author not connected to a voice channel.")
+                raise commands.CommandError(
+                    "Author not connected to a voice channel.")
         elif ctx.voice_client.is_playing():
             ctx.voice_client.stop()
 
@@ -174,7 +181,7 @@ class CMusic(commands.Cog):
         if not queue:
             await ctx.send("The queue is empty.")
         o = ""
-        for c,s in enumerate(queue):
+        for c, s in enumerate(queue):
             o += "{}) {}\n".format(c.zfill(len(str(len(queue)))), str(s))
         for page in pagify(o):
             await ctx.send(box(page))
@@ -183,13 +190,14 @@ class CMusic(commands.Cog):
         loop = await self.config.guild(guild).loop()
         queue = await self.config.guild(guild).queue()
         return {
-            'loop':loop,
-            'queue':queue,
+            'loop': loop,
+            'queue': queue,
         }
 
     async def after_wrapper(self, ctx, cid, data={}):
         loop = await self.config.guild(ctx.guild).loop()
         queue = await self.config.guild(ctx.guild).queue()
+
         def after(error):
             if error:
                 print(error)
@@ -207,8 +215,6 @@ class CMusic(commands.Cog):
         return after
 
 
-
-
 def desterilize(sterilized):
     type, args, kwargs = sterilized
     format = discord.utils.get(formats, type=type)
@@ -218,11 +224,15 @@ def desterilize(sterilized):
 class Song:
     type = 0
     func = None
+
     def __init__(self, *args, **kwargs):
         self.args = args
         self.kwargs = kwargs
+
     def sterilize(self): return (self.type, self.args, self.kwargs)
+
     def make(self): return self.func(*self.args, **self.kwargs)
+
     def __str__(self):
         return str(self.args)
 
@@ -230,6 +240,7 @@ class Song:
 class File(Song):
     type = 1
     func = discord.FFmpegPCMAudio
+
 
 class YTDL(Song):
     type = 2
@@ -240,6 +251,7 @@ formats = [
     File,
     YTDL,
 ]
+
 
 def csetup(bot):
     global old_invite
