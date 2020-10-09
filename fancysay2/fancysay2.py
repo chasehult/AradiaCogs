@@ -10,10 +10,10 @@ from typing import Optional
 from tsutils import char_to_emoji
 from tsutils import tsutils
 
-logger = logging.getLogger('red.misc-cogs.fancysay')
+logger = logging.getLogger('RedbotCogs.fancysay2')
 
 
-class FancySay(commands.Cog):
+class FancySay2(commands.Cog):
     def __init__(self, bot: Red, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bot = bot
