@@ -161,9 +161,9 @@ class FancySay2(commands.Cog):
         except Exception as error:
             logger.exception("failed to fancysay:")
 
-    @commands.command(aliases=["parrot", "repeat"])
+    @commands.command(aliases=["repeat"])
     @checks.mod_or_permissions(manage_messages=True)
-    async def say(self, ctx, *, message):
+    async def parrot(self, ctx, *, message):
         """Make the bot parrot a phrase."""
         message = self.emojify(message)
         await ctx.send(message)
