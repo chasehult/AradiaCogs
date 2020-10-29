@@ -119,23 +119,29 @@ class Lottery(commands.Cog):
 
     @commands.Cog.listener('on_raw_reaction_remove')
     async def on_reaction_remove(self, payload):
-        member = self.bot.get_guild(payload.guild_id).get_member(payload.user_id)
+        try:
+            guild = self.bot.get_guild(payload.guild_id)
+            member = await guild.fetch_member(payload.user_id)
+        except (AttributeError, discord.NotFound):
+            return
+
         if not payload.guild_id \
                   or member.bot \
-                  or await self.bot.cog_disabled_in_guild(self, member.guild):
+                  or await self.bot.cog_disabled_in_guild(self, guild):
             return
-        lotteries = await self.config.guild(member.guild).on_react()
+
+        lotteries = await self.config.guild(guild).on_react()
         for name, lot in lotteries.items():
             if lot['message'] == payload.message_id:
                 try:
                     emoji = payload.emoji.name if isinstance(payload.emoji, discord.PartialEmoji) else payload.emoji.id
                     if emoji != lot['emoji'] or not lot['enabled']:
                         continue
-                    role = member.guild.get_role(lot['role'])
+                    role = guild.get_role(lot['role'])
                     if role is not None:
                         await member.remove_roles(role, reason="Lottery React Role Removal")
                 except discord.Forbidden:
-                    logger.exception("Unable to remove roles in guild: {}".format(payload.guild_id))
+                    logger.exception("Unable to remove roles in guild: {}".format(guild.id))
                     return
 
     async def can_assign(self, ctx, role):

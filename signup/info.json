@@ -2,10 +2,10 @@
   "author": [
     "Aradia Megido#2552"
   ],
-  "description": "Manage Google calendars and view events from discord.",
+  "description": "Sign up for events with friends",
   "end_user_data_statement": "No personal data is stored.",
-  "install_msg": "",
-  "short": "Google Calendar Utilities",
+  "install_msg": "Use [p]signup to get started",
+  "short": "Signup cog",
   "min_bot_version": "3.4.0",
   "max_bot_version": "3.4.2",
   "min_python_version": [
@@ -16,14 +16,8 @@
   "hidden": false,
   "disabled": false,
   "required_cogs": {},
-  "requirements": [
-    "google-api-python-client",
-    "google-auth-httplib2",
-    "google-auth-oauthlib",
-    "pytz"
-  ],
+  "requirements": ["emoji"],
   "tags": [
-    "googlecalendar",
-    "calendar"
+    "events"
   ]
 }
