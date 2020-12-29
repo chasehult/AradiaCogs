@@ -40,7 +40,7 @@ class PhantasyStar(commands.Cog):
                 text = await response.read()
 
         cid = re.search(rb"rappy_calendar\('(\d+)'\)", text).group(1)
-        soup = BeautifulSoup(text)
+        soup = BeautifulSoup(text, 'html.parser')
         simcal = soup.find(attrs={'class': "simcal-calendar", 'data-calendar-id': cid})
         events = []
         for event in simcal.findAll(class_="simcal-event"):
