@@ -15,7 +15,7 @@ class Lottery(commands.Cog):
         super().__init__(*args, **kwargs)
         self.bot = bot
         self.config = Config.get_conf(self, identifier=7077327)
-        self.config.register_guild(on_react={}, pools={})
+        self.config.register_guild(lotteries={}, pools={})
 
     async def red_get_data_for_user(self, *, user_id):
         """Get a user's personal data."""
@@ -33,29 +33,29 @@ class Lottery(commands.Cog):
     @checks.mod_or_permissions(manage_roles=True)
     async def lottery(self, ctx, lotteryname):
         """Manage or run a lottery"""
-        on_react = await self.config.guild(ctx.guild).on_react()
-        if lotteryname not in on_react:
+        lotteries = await self.config.guild(ctx.guild).lotteries()
+        if lotteryname not in lotteries:
             await ctx.send("That lottery does not exist.")
             return
-        lottery = on_react[lotteryname]
+        lottery = lotteries[lotteryname]
         members = [m
                    for m
                    in ctx.guild.members
-                   if on_react[lotteryname]['role'] in [r.id for r in m.roles]
+                   if lotteries[lotteryname]['role'] in [r.id for r in m.roles]
                    ]
         if not members:
             await ctx.send("Nobody has entered this lottery.")
             return
         random.shuffle(members)
-        chan = self.bot.get_channel(on_react[lotteryname]['channel'])
+        chan = self.bot.get_channel(lotteries[lotteryname]['channel'])
         if chan is not None:
             try:
-                m = await chan.fetch_message(on_react[lotteryname]['message'])
+                m = await chan.fetch_message(lotteries[lotteryname]['message'])
                 if m is not None:
                     await m.delete()
             except discord.NotFound:
                 pass
-        await members[0].remove_roles(ctx.guild.get_role(on_react[lotteryname]['role']))
+        await members[0].remove_roles(ctx.guild.get_role(lotteries[lotteryname]['role']))
         if lottery.get("prizelist"):
             pools = await self.config.guild(ctx.guild).pools()
             await ctx.send("{} has won {}".format(members[0].mention, random.choice(pools[lottery.get("prizelist")])))
@@ -79,8 +79,8 @@ class Lottery(commands.Cog):
             except discord.Forbidden:
                 await ctx.send("I don't have permission to create a role here.")
                 return
-        async with self.config.guild(ctx.guild).on_react() as on_react:
-            on_react[lotteryname] = {
+        async with self.config.guild(ctx.guild).lotteries() as lotteries:
+            lotteries[lotteryname] = {
                 "message": message.id,
                 "emoji": emoji.id if isinstance(emoji, discord.Emoji) else emoji,
                 "role": role.id,
@@ -93,11 +93,11 @@ class Lottery(commands.Cog):
     @lottery.command(name="delete")
     async def lottery_delete(self, ctx, lotteryname):
         """Delete a lottery"""
-        async with self.config.guild(ctx.guild).on_react() as on_react:
-            if lotteryname not in on_react:
+        async with self.config.guild(ctx.guild).lotteries() as lotteries:
+            if lotteryname not in lotteries:
                 await ctx.send("That lottery does not exist.")
                 return
-            del on_react[lotteryname]
+            del lotteries[lotteryname]
         await ctx.tick()
 
     @lottery.command(name="prizelist")
@@ -149,7 +149,7 @@ class Lottery(commands.Cog):
         if prizelist not in pools:
             await ctx.send("There is no prizelist with that name.")
             return
-        async with self.config.guild(ctx.guild).on_react() as lotteries:
+        async with self.config.guild(ctx.guild).lotteries() as lotteries:
             if lottery not in lotteries:
                 await ctx.send("There is no lottery with that name.")
                 return
@@ -159,7 +159,7 @@ class Lottery(commands.Cog):
     @lottery.command(name="unbind")
     async def lottery_unbind(self, ctx, lottery):
         """Unbind a prizelist from a lottery"""
-        async with self.config.guild(ctx.guild).on_react() as lotteries:
+        async with self.config.guild(ctx.guild).lotteries() as lotteries:
             if lottery not in lotteries:
                 await ctx.send("There is no lottery with that name.")
                 return
@@ -177,12 +177,12 @@ class Lottery(commands.Cog):
             await ctx.send(box(page))
 
     @commands.Cog.listener('on_raw_reaction_add')
-    async def on_reaction_add(self, payload):
+    async def lotteriesion_add(self, payload):
         if not payload.guild_id \
                 or payload.member.bot \
                 or await self.bot.cog_disabled_in_guild(self, payload.member.guild):
             return
-        lotteries = await self.config.guild(payload.member.guild).on_react()
+        lotteries = await self.config.guild(payload.member.guild).lotteries()
 
         for name, lot in lotteries.items():
             if lot['message'] == payload.message_id:
@@ -200,7 +200,7 @@ class Lottery(commands.Cog):
                     return
 
     @commands.Cog.listener('on_raw_reaction_remove')
-    async def on_reaction_remove(self, payload):
+    async def lotteriesion_remove(self, payload):
         try:
             guild = self.bot.get_guild(payload.guild_id)
             member = await guild.fetch_member(payload.user_id)
@@ -212,7 +212,7 @@ class Lottery(commands.Cog):
                 or await self.bot.cog_disabled_in_guild(self, guild):
             return
 
-        lotteries = await self.config.guild(guild).on_react()
+        lotteries = await self.config.guild(guild).lotteries()
         for name, lot in lotteries.items():
             if lot['message'] == payload.message_id:
                 try:
