@@ -6,6 +6,7 @@ import discord
 import emoji as emoji_module
 from redbot.core import checks, commands, Config
 from redbot.core.utils.chat_formatting import box, inline, pagify
+from tsutils import confirm_message
 
 logger = logging.getLogger('red.misc-cogs.grantrole')
 
@@ -100,14 +101,46 @@ class Lottery(commands.Cog):
             del lotteries[lotteryname]
         await ctx.tick()
 
-    @lottery.command(name="prizelist")
-    async def lottery_prizelist(self, ctx, name):
+    @lottery.group(name="prizelist")
+    async def lottery_prizelist(self, ctx):
+        """Subcommand to add or remove prizelists"""
+
+    @lottery_prizelist.command(name="add")
+    async def l_p_add(self, ctx, name):
         """Create a prizelist"""
         async with self.config.guild(ctx.guild).pools() as pools:
             if name in pools:
                 await ctx.send("That prizelist already exists.")
                 return
             pools[name] = []
+        await ctx.tick()
+
+    @lottery_prizelist.command(name="list")
+    async def l_p_list(self, ctx):
+        """List all valid prizelists"""
+        pools = await self.config.guild(ctx.guild).pools()
+        if not pools:
+            await ctx.send("You have no saved prizelists.")
+            return
+        else:
+            await ctx.send(box("\n".join(pools)))
+        await ctx.tick()
+
+    @lottery_prizelist.command(name="delete")
+    async def l_p_delete(self, ctx, name):
+        """Delete a prizelist"""
+        async with self.config.guild(ctx.guild).pools() as pools:
+            if name not in pools:
+                await ctx.send("That prizelist doesn't exist.")
+                return
+            async with self.config.guild(ctx.guild).lotteries() as lotteries:
+                todel = [l for l in lotteries if lotteries[l].get("prizelist") == name]
+                if (not todel) or await confirm_message(ctx,
+                                                        "Deleting this prizelist will also delete the following lotteries:\n" +
+                                                        box(", ".join(todel))):
+                    for l in todel:
+                        del lotteries[l]
+                    del pools[name]
         await ctx.tick()
 
     @lottery.command(name="addprize")
@@ -172,6 +205,9 @@ class Lottery(commands.Cog):
         pools = await self.config.guild(ctx.guild).pools()
         if prizelist not in pools:
             await ctx.send("There is no prizelist with that name.")
+            return
+        if not pools[prizelist]:
+            await ctx.send("There are no prizes in this pool.")
             return
         for page in pagify("\n".join(pools[prizelist])):
             await ctx.send(box(page))

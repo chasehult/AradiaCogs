@@ -16,7 +16,10 @@
   "hidden": false,
   "disabled": false,
   "required_cogs": {},
-  "requirements": ["emoji"],
+  "requirements": [
+    "emoji",
+    "tsutils"
+  ],
   "tags": [
     "lottery"
   ]
