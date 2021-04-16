@@ -30,7 +30,7 @@ class CoCStats(commands.Cog):
     async def clash(self, ctx):
         """Get the current report from clashofclansforecaster.com"""
         async with ctx.typing():
-            browser = await launch()
+            browser = await launch(args=['--no-sandbox'])
             page = await browser.newPage()
             await page.goto('http://clashofclansforecaster.com')
             a = await page.screenshot(clip={'x': 170,
