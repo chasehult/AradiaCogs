@@ -1,0 +1,20 @@
+{
+  "author": [
+    "Aradia Megido#2552"
+  ],
+  "description": "See the latest CoC report from clashofclansforecaster.com",
+  "end_user_data_statement": "No personal data is stored.",
+  "install_msg": "Use [p]clash to see the latest report",
+  "short": "Clash of Clans reporting",
+  "min_bot_version": "3.4.0",
+  "max_bot_version": "0.0.0",
+  "min_python_version": [3, 8, 1],
+  "hidden": false,
+  "disabled": false,
+  "required_cogs": {},
+  "requirements": ["pyppeteer"],
+  "tags": [
+    "CoC",
+    "Clash of Clans"
+  ]
+}
