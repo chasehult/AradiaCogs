@@ -1,4 +1,5 @@
 import logging
+import os
 
 import discord
 from pyppeteer import launch
@@ -29,13 +30,21 @@ class CoCStats(commands.Cog):
     @commands.command()
     async def clash(self, ctx):
         """Get the current report from clashofclansforecaster.com"""
-        async with ctx.typing():
-            browser = await launch(args=['--no-sandbox'])
-            page = await browser.newPage()
-            await page.goto('http://clashofclansforecaster.com')
-            a = await page.screenshot(clip={'x': 170,
-                                            'y': 8,
-                                            'height': 898,
-                                            'width': 1152})
+        oldtz = os.environ.get("TZ", "")
+        try:
+            os.environ["TZ"] = "America/New_York"
+            async with ctx.typing():
+                browser = await launch(args=['--no-sandbox'])
+                page = await browser.newPage()
+                await page.goto('http://clashofclansforecaster.com')
+                a = await page.screenshot(clip={'x': 170,
+                                                'y': 8,
+                                                'height': 898,
+                                                'width': 1152})
+        finally:
+            if oldtz:
+                os.environ["TZ"] = oldtz
+            else:
+                del os.environ["TZ"]
         await ctx.send(file=discord.File(BytesIO(a), filename="screenshot.png"))
         await browser.close()
