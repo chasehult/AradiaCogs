@@ -310,5 +310,5 @@ class Weverse(commands.Cog):
                 logger.exception(f"Weverse Post Failed to {channel_id} for {community_name}.")
 
     async def translate(self, text: str) -> Optional[str]:
-        if self.bot.get_cog("Translate"):
+        if self.bot.get_cog("Translate") and self.bot.get_cog("Translate").aservice:
             return await self.bot.get_cog("Translate").a_translate_lang('ko', 'en', text)
