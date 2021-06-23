@@ -171,6 +171,24 @@ class Weverse(commands.Cog):
             del chans[community_name]
         await ctx.send(f"You will no longer receive weverse updates for {community_name}.")
 
+    @weverse.command(name="list")
+    @commands.guild_only()
+    async def weverse_add(self, ctx, channel: discord.TextChannel = None):
+        """Receive Weverse updates from a specific Weverse community.
+
+        If the community is multiple words, surround the entire thing in quotes.
+        """
+        if channel is None:
+            channel = ctx.channel
+
+        chans = [inline(chan) for chan in await self.config.channel(channel).channels()]
+
+        if not chans:
+            await ctx.send("There are no communities set up to notify in this channel.")
+            return
+
+        await ctx.send(f"The communities set to notify in this channel are {humanize_list(chans)}.")
+
     @weverse.command()
     @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)
