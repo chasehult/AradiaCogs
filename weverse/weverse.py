@@ -255,7 +255,7 @@ class Weverse(commands.Cog):
 
         embed_description = (f"**{notification.message}**\n\n"
                              f"Content: **{comment_body}**" +
-                             f"\nTranslated Content: **{translation}**" if translation else "")
+                             (f"\nTranslated Content: **{translation}**" if translation else ""))
         embed = discord.Embed(title=embed_title, description=embed_description,
                               color=discord.Color(random.randint(0x000000, 0xffffff)))
         return embed
@@ -270,7 +270,7 @@ class Weverse(commands.Cog):
             embed_description = (f"**{notification.message}**\n\n"
                                  f"Artist: **{post.artist.name} ({post.artist.list_name[0]})**\n"
                                  f"Content: **{post.body}**" +
-                                 f"\nTranslated Content: **{translation}**" if translation else "")
+                                 (f"\nTranslated Content: **{translation}**" if translation else ""))
             embed = discord.Embed(title=embed_title, description=embed_description,
                                   color=discord.Color(random.randint(0x000000, 0xffffff)))
             message = "\n".join(photo.original_img_url for photo in post.photos)
