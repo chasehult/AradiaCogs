@@ -1,12 +1,13 @@
 import asyncio
 import logging
+import random
 from typing import Optional
 
 import aiohttp
 import discord
 from io import BytesIO
 
-from redbot.core import commands, Config
+from redbot.core import commands, Config, checks
 from Weverse import WeverseClientAsync
 from redbot.core.utils.chat_formatting import humanize_list, inline
 
@@ -19,10 +20,8 @@ class Weverse(commands.Cog):
         self.bot = bot
 
         self.config = Config.get_conf(self, identifier=7373253)
-        self.config.register_global(token=None)
+        self.config.register_global(token=None, seen=[])
         self.config.register_channel(channels={})
-
-        self.notifications_already_posted = {}
 
         self.weverse_client: Optional[WeverseClientAsync] = None
         self.session = aiohttp.ClientSession()
@@ -77,7 +76,7 @@ class Weverse(commands.Cog):
         self.bot.loop.create_task(self.session.close())
 
     async def run_loop(self):
-        await asyncio.sleep(5)
+        await asyncio.sleep(10)
         while True:
             try:
                 await self.update_weverse()
@@ -116,6 +115,7 @@ class Weverse(commands.Cog):
         await ctx.tick()
 
     @weverse.command(name="add")
+    @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)
     async def weverse_add(self, ctx, channel: Optional[discord.TextChannel], community_name, role: discord.Role = None):
         """Receive Weverse updates from a specific Weverse community.
@@ -154,6 +154,7 @@ class Weverse(commands.Cog):
             await ctx.send(f"I could not find {community_name}. Available choices are:\n" + available)
 
     @weverse.command(name="remove")
+    @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)
     async def weverse_remove(self, ctx, channel: Optional[discord.TextChannel], community_name):
         """Stop recieving Weverse Updates from a specific Weverse community in the current text channel.
@@ -171,6 +172,7 @@ class Weverse(commands.Cog):
         await ctx.send(f"You will no longer receive weverse updates for {community_name}.")
 
     @weverse.command()
+    @commands.guild_only()
     @commands.has_guild_permissions(manage_messages=True)
     async def showcomments(self, ctx, channel: Optional[discord.TextChannel], community_name, enable: bool):
         """Enable or disable updates for comments on a community.
@@ -196,56 +198,46 @@ class Weverse(commands.Cog):
         await self.weverse_client.check_new_user_notifications()
 
         user_notifications = self.weverse_client.user_notifications
-        if not user_notifications:
-            return
-        latest_notification = user_notifications[0]
+        for notif in user_notifications:
+            community_name = notif.community_name or notif.bold_element
+            if not community_name or notif.id in await self.config.seen():
+                continue
 
-        community_name = latest_notification.community_name or latest_notification.bold_element
-        if not community_name:
-            return
+            channels = [(c_id, data['channels'][community_name.lower()])
+                        for c_id, data in (await self.config.all_channels()).items()
+                        if community_name.lower() in data['channels']]
 
-        channels = [(c_id, data['channels'][community_name.lower()])
-                    for c_id, data in (await self.config.all_channels()).items()
-                    if community_name.lower() in data['channels']]
+            if not channels:
+                logger.warning("WARNING: There were no channels to post the Weverse notification to.")
+                continue
 
-        if not channels:
-            logger.warning("WARNING: There were no channels to post the Weverse notification to.")
-            return
-
-        noti_type = self.weverse_client.determine_notification_type(latest_notification.message)
-        embed_title = f"New {community_name} Notification!"
-        is_comment = False
-        message_text = None
-        if noti_type == 'comment':
-            is_comment = True
-            embed = await self.set_comment_embed(latest_notification, embed_title)
-        elif noti_type == 'post':
-            embed, message_text = await self.set_post_embed(latest_notification, embed_title)
-        elif noti_type == 'media':
-            embed, message_text = await self.set_media_embed(latest_notification, embed_title)
-        elif noti_type == 'announcement':
-            return None  # not keeping track of announcements ATM
-        else:
-            return None
-
-        if not embed:
-            logger.warning(f"WARNING: Could not receive Weverse information for {community_name}. "
-                           f"Noti ID:{latest_notification.id} - "
-                           f"Contents ID: {latest_notification.contents_id} - "
-                           f"Noti Type: {latest_notification.contents_type}")
-            return
-
-        for channel_id, data in channels:
-            notification_ids = self.notifications_already_posted.get(channel_id)
-            if not notification_ids:
-                await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment,
-                                                   community_name)
-                self.notifications_already_posted[channel_id] = [latest_notification.id]
+            noti_type = self.weverse_client.determine_notification_type(notif.message)
+            embed_title = f"New {community_name} Notification!"
+            is_comment = False
+            message_text = None
+            if noti_type == 'comment':
+                is_comment = True
+                embed = await self.set_comment_embed(notif, embed_title)
+            elif noti_type == 'post':
+                embed, message_text = await self.set_post_embed(notif, embed_title)
+            elif noti_type == 'media':
+                embed, message_text = await self.set_media_embed(notif, embed_title)
+            elif noti_type == 'announcement':
+                continue  # not keeping track of announcements ATM
             else:
-                if latest_notification.id not in notification_ids:
-                    self.notifications_already_posted[channel_id].append(latest_notification.id)
-                    await self.send_weverse_to_channel(channel_id, data, message_text, embed,
-                                                       is_comment, community_name)
+                continue
+
+            if not embed:
+                logger.warning(f"WARNING: Could not receive Weverse information for {community_name}. "
+                               f"Noti ID:{notif.id} - "
+                               f"Contents ID: {notif.contents_id} - "
+                               f"Noti Type: {notif.contents_type}")
+                continue
+
+            for channel_id, data in channels:
+                await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment, community_name)
+                async with self.config.seen() as seen:
+                    seen.append(notif.id)
 
     async def set_comment_embed(self, notification, embed_title):
         """Set Comment Embed for Weverse."""
@@ -257,28 +249,28 @@ class Weverse(commands.Cog):
                 comment_body = artist_comments[0].body
             else:
                 return
-        translation = await self.weverse_client.translate(notification.contents_id, is_comment=True,
-                                                          community_id=notification.community_id) or comment_body
+        translation = await self.translate(comment_body)
 
-        embed_description = f"**{notification.message}**\n\n" \
-                            f"Content: **{comment_body}**\n" \
-                            f"Translated Content: **{translation}**"
-        embed = discord.Embed(title=embed_title, description=embed_description)
+        embed_description = (f"**{notification.message}**\n\n"
+                             f"Content: **{comment_body}**" +
+                             f"\nTranslated Content: **{translation}**" if translation else "")
+        embed = discord.Embed(title=embed_title, description=embed_description,
+                              color=discord.Color(random.randint(0x000000, 0xffffff)))
         return embed
 
     async def set_post_embed(self, notification, embed_title):
         """Set Post Embed for Weverse."""
         post = self.weverse_client.get_post_by_id(notification.contents_id)
         if post:
-            translation = await self.weverse_client.translate(post.id, is_post=True, p_obj=post,
-                                                              community_id=notification.community_id)
+            translation = await self.translate(post.body)
 
             # artist = self.weverse_client.get_artist_by_id(notification.artist_id)
-            embed_description = f"**{notification.message}**\n\n" \
-                                f"Artist: **{post.artist.name} ({post.artist.list_name[0]})**\n" \
-                                f"Content: **{post.body}**\n" \
-                                f"Translated Content: **{translation}**"
-            embed = discord.Embed(title=embed_title, description=embed_description)
+            embed_description = (f"**{notification.message}**\n\n"
+                                 f"Artist: **{post.artist.name} ({post.artist.list_name[0]})**\n"
+                                 f"Content: **{post.body}**" +
+                                 f"\nTranslated Content: **{translation}**" if translation else "")
+            embed = discord.Embed(title=embed_title, description=embed_description,
+                                  color=discord.Color(random.randint(0x000000, 0xffffff)))
             message = "\n".join(photo.original_img_url for photo in post.photos)
             return embed, message
         return None, None
@@ -290,7 +282,8 @@ class Weverse(commands.Cog):
             embed_description = f"**{notification.message}**\n\n" \
                                 f"Title: **{media.title}**\n" \
                                 f"Content: **{media.body}**\n"
-            embed = discord.Embed(title=embed_title, description=embed_description)
+            embed = discord.Embed(title=embed_title, description=embed_description,
+                                  color=discord.Color(random.randint(0x000000, 0xffffff)))
             message = media.video_link
             return embed, message
         return None, None
@@ -309,7 +302,11 @@ class Weverse(commands.Cog):
                         message_text = f"<@&{role_id}>\n{message_text}"
                     await channel.send(message_text)
                     logger.debug(f"Weverse Post for {community_name} sent to {channel_id}.")
-            except discord.Forbidden as e:
+            except (discord.Forbidden, AttributeError):
                 pass
-            except Exception as e:
-                logger.exception(f"Weverse Post Failed to {channel_id} for {community_name} -> {e}")
+            except Exception:
+                logger.exception(f"Weverse Post Failed to {channel_id} for {community_name}.")
+
+    async def translate(self, text: str) -> Optional[str]:
+        if self.bot.get_cog("Translate"):
+            return await self.bot.get_cog("Translate").a_translate_lang('ko', 'en', text)
