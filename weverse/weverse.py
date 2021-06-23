@@ -232,6 +232,8 @@ class Weverse(commands.Cog):
                                f"Noti ID:{notif.id} - "
                                f"Contents ID: {notif.contents_id} - "
                                f"Noti Type: {notif.contents_type}")
+                async with self.config.seen() as seen:
+                    seen.append(notif.id)
                 continue
 
             for channel_id, data in channels:
