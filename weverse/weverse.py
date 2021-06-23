@@ -4,7 +4,6 @@ from typing import Optional
 
 import aiohttp
 import discord
-from discord.ext import tasks
 from io import BytesIO
 
 from redbot.core import commands, Config
@@ -30,6 +29,7 @@ class Weverse(commands.Cog):
         self.ready = asyncio.Event()
 
         bot.loop.create_task(self.init())
+        self._loop = bot.loop.create_task(self.run_loop())
 
     async def init(self):
         if await self.config.token() is None:
@@ -73,7 +73,19 @@ class Weverse(commands.Cog):
         return
 
     def cog_unload(self):
+        self._loop.cancel()
         self.bot.loop.create_task(self.session.close())
+
+    async def run_loop(self):
+        await asyncio.sleep(5)
+        while True:
+            try:
+                await self.update_weverse()
+            except asyncio.CancelledError:
+                break
+            except Exception:
+                logger.exception("Error in loop")
+            await asyncio.sleep(30)
 
     @commands.group()
     async def weverse(self, ctx):
@@ -172,18 +184,16 @@ class Weverse(commands.Cog):
             if community_name not in chans:
                 await ctx.send("This community is not set up to notify the channel.")
                 return
-            chans[community_name]['allow_comments'] = enable
+            chans[community_name]['show_comments'] = enable
         await ctx.send(f"You will {'now' if enable else 'no longer'} recieve"
                        f" channel notifications from {community_name}.")
 
-    @tasks.loop(seconds=30, minutes=0, hours=0, reconnect=True)
-    async def weverse_updates(self):
+    async def update_weverse(self):
         """Process for checking for Weverse updates and sending to discord channels."""
         if self.weverse_client is None or not self.weverse_client.cache_loaded:
             return
 
-        if not await self.weverse_client.check_new_user_notifications():
-            return
+        await self.weverse_client.check_new_user_notifications()
 
         user_notifications = self.weverse_client.user_notifications
         if not user_notifications:
@@ -194,9 +204,9 @@ class Weverse(commands.Cog):
         if not community_name:
             return
 
-        channels = [(c_id, data)
-                    for c_id, data in await self.config.all_channels()
-                    if community_name.lower() in data]
+        channels = [(c_id, data['channels'][community_name.lower()])
+                    for c_id, data in (await self.config.all_channels()).items()
+                    if community_name.lower() in data['channels']]
 
         if not channels:
             logger.warning("WARNING: There were no channels to post the Weverse notification to.")
@@ -223,10 +233,9 @@ class Weverse(commands.Cog):
                            f"Noti ID:{latest_notification.id} - "
                            f"Contents ID: {latest_notification.contents_id} - "
                            f"Noti Type: {latest_notification.contents_type}")
-            return  # we do not want constant attempts to send a message.
+            return
 
-        for channel_info, data in channels:
-            channel_id = channel_info[0]
+        for channel_id, data in channels:
             notification_ids = self.notifications_already_posted.get(channel_id)
             if not notification_ids:
                 await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment,
@@ -288,7 +297,7 @@ class Weverse(commands.Cog):
 
     async def send_weverse_to_channel(self, channel_id, channel_data, message_text, embed, is_comment, community_name):
         role_id = channel_data['role_id']
-        comments_enabled = channel_data['allow_comments']
+        comments_enabled = channel_data['show_comments']
         if not is_comment or comments_enabled:
             channel = self.bot.get_channel(channel_id)
             try:
@@ -299,7 +308,7 @@ class Weverse(commands.Cog):
                     if role_id:
                         message_text = f"<@&{role_id}>\n{message_text}"
                     await channel.send(message_text)
-                    logger.info(f"Weverse Post for {community_name} sent to {channel_id}.")
+                    logger.debug(f"Weverse Post for {community_name} sent to {channel_id}.")
             except discord.Forbidden as e:
                 pass
             except Exception as e:
