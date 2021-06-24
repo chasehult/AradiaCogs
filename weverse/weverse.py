@@ -217,6 +217,8 @@ class Weverse(commands.Cog):
 
         user_notifications = self.weverse_client.user_notifications
         for notif in user_notifications:
+            async with self.config.seen() as seen:
+                seen.append(notif.id)
             community_name = notif.community_name or notif.bold_element
             if not community_name or notif.id in await self.config.seen():
                 continue
@@ -226,7 +228,6 @@ class Weverse(commands.Cog):
                         if community_name.lower() in data['channels']]
 
             if not channels:
-                logger.warning("WARNING: There were no channels to post the Weverse notification to.")
                 continue
 
             noti_type = self.weverse_client.determine_notification_type(notif.message)
@@ -246,18 +247,11 @@ class Weverse(commands.Cog):
                 continue
 
             if not embed:
-                logger.warning(f"WARNING: Could not receive Weverse information for {community_name}. "
-                               f"Noti ID:{notif.id} - "
-                               f"Contents ID: {notif.contents_id} - "
-                               f"Noti Type: {notif.contents_type}")
-                async with self.config.seen() as seen:
-                    seen.append(notif.id)
                 continue
 
             for channel_id, data in channels:
                 await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment, community_name)
-                async with self.config.seen() as seen:
-                    seen.append(notif.id)
+
 
     async def set_comment_embed(self, notification, embed_title):
         """Set Comment Embed for Weverse."""
@@ -321,11 +315,9 @@ class Weverse(commands.Cog):
                     if role_id:
                         message_text = f"<@&{role_id}>\n{message_text}"
                     await channel.send(message_text)
-                    logger.debug(f"Weverse Post for {community_name} sent to {channel_id}.")
-            except (discord.Forbidden, AttributeError):
-                pass
+
             except Exception:
-                logger.exception(f"Weverse Post Failed to {channel_id} for {community_name}.")
+                pass
 
     async def translate(self, text: str) -> Optional[str]:
         if self.bot.get_cog("Translate") and self.bot.get_cog("Translate").aservice:
