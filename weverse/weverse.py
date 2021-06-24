@@ -173,7 +173,7 @@ class Weverse(commands.Cog):
 
     @weverse.command(name="list")
     @commands.guild_only()
-    async def weverse_add(self, ctx, channel: discord.TextChannel = None):
+    async def weverse_list(self, ctx, channel: discord.TextChannel = None):
         """Receive Weverse updates from a specific Weverse community.
 
         If the community is multiple words, surround the entire thing in quotes.
