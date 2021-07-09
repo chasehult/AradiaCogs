@@ -7,7 +7,7 @@ import aiohttp
 import discord
 from io import BytesIO
 
-from redbot.core import commands, Config, checks
+from redbot.core import commands, Config
 from Weverse import WeverseClientAsync
 from redbot.core.utils.chat_formatting import humanize_list, inline
 
@@ -217,11 +217,11 @@ class Weverse(commands.Cog):
 
         user_notifications = self.weverse_client.user_notifications
         for notif in user_notifications:
-            async with self.config.seen() as seen:
-                seen.append(notif.id)
             community_name = notif.community_name or notif.bold_element
             if not community_name or notif.id in await self.config.seen():
                 continue
+            async with self.config.seen() as seen:
+                seen.append(notif.id)
 
             channels = [(c_id, data['channels'][community_name.lower()])
                         for c_id, data in (await self.config.all_channels()).items()
@@ -251,7 +251,6 @@ class Weverse(commands.Cog):
 
             for channel_id, data in channels:
                 await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment, community_name)
-
 
     async def set_comment_embed(self, notification, embed_title):
         """Set Comment Embed for Weverse."""
