@@ -6,7 +6,7 @@ import discord
 import emoji as emoji_module
 from redbot.core import checks, commands, Config
 from redbot.core.utils.chat_formatting import box, inline, pagify
-from tsutils import confirm_message
+from tsutils import get_user_confirmation
 
 logger = logging.getLogger('red.misc-cogs.grantrole')
 
@@ -134,12 +134,12 @@ class Lottery(commands.Cog):
                 await ctx.send("That prizelist doesn't exist.")
                 return
             async with self.config.guild(ctx.guild).lotteries() as lotteries:
-                todel = [l for l in lotteries if lotteries[l].get("prizelist") == name]
-                if (not todel) or await confirm_message(ctx,
+                todel = [lot for lot in lotteries if lotteries[lot].get("prizelist") == name]
+                if (not todel) or await get_user_confirmation(ctx,
                                                         "Deleting this prizelist will also delete the following lotteries:\n" +
                                                         box(", ".join(todel))):
-                    for l in todel:
-                        del lotteries[l]
+                    for lot in todel:
+                        del lotteries[lot]
                     del pools[name]
         await ctx.tick()
 
