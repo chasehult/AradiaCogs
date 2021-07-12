@@ -5,7 +5,7 @@ from datetime import timedelta, datetime
 import discord
 from io import BytesIO
 
-from redbot.core import commands, Config
+from redbot.core import commands, Config, checks
 from redbot.core.commands import TimedeltaConverter
 
 logger = logging.getLogger('red.aradiacogs.channeltimer')
@@ -48,6 +48,8 @@ class ChannelTimer(commands.Cog):
                 logger.exception("Error in loop")
             await asyncio.sleep(10 * 60)
 
+    @checks.bot_has_permissions(manage_channels=True)
+    @checks.admin_or_permissions(administrator=True)
     @commands.group()
     async def channeltimer(self, ctx):
         """Subcommand for channeltimer related commands."""
