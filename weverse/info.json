@@ -12,7 +12,7 @@
   "hidden": false,
   "disabled": false,
   "required_cogs": {
-    "translate": "https://github.com/TsubakiBotPad/misc-cogs"
+    "papago": "https://github.com/chasehult/AradiaCogs"
   },
   "requirements": ["weverse"],
   "tags": [

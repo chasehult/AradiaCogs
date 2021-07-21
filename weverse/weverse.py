@@ -215,8 +215,9 @@ class Weverse(commands.Cog):
 
         await self.weverse_client.check_new_user_notifications()
 
-        user_notifications = self.weverse_client.user_notifications
-        for notif in user_notifications:
+        allchans = await self.config.all_channels()
+
+        for notif in self.weverse_client.user_notifications:
             community_name = notif.community_name or notif.bold_element
             if not community_name or notif.id in await self.config.seen():
                 continue
@@ -224,7 +225,7 @@ class Weverse(commands.Cog):
                 seen.append(notif.id)
 
             channels = [(c_id, data['channels'][community_name.lower()])
-                        for c_id, data in (await self.config.all_channels()).items()
+                        for c_id, data in allchans.items()
                         if community_name.lower() in data['channels']]
 
             if not channels:
@@ -319,5 +320,10 @@ class Weverse(commands.Cog):
                 pass
 
     async def translate(self, text: str) -> Optional[str]:
-        if self.bot.get_cog("Translate") and self.bot.get_cog("Translate").aservice:
-            return await self.bot.get_cog("Translate").a_translate_lang('ko', 'en', text)
+        if self.bot.get_cog("Papago"):
+            try:
+                return await self.bot.get_cog("Papago").translate('ko', 'en', text)
+            except ValueError:
+                pass
+            except Exception:
+                logger.exception("Exception: ")

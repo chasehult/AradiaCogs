@@ -1,0 +1,25 @@
+{
+  "author": [
+    "Aradia Megido#2552"
+  ],
+  "description": "Allow translation functionality",
+  "end_user_data_statement": "No personal data is stored.",
+  "install_msg": "Use [p]ptranslate to get started",
+  "short": "Papago Translation cog",
+  "min_bot_version": "3.4.0",
+  "max_bot_version": "0.0.0",
+  "min_python_version": [
+    3,
+    8,
+    1
+  ],
+  "hidden": false,
+  "disabled": false,
+  "required_cogs": {},
+  "requirements": [
+    "aiohttp"
+  ],
+  "tags": [
+    "translate"
+  ]
+}
