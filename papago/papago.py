@@ -1,4 +1,3 @@
-import urllib.parse
 from io import BytesIO
 
 import aiohttp
@@ -31,7 +30,7 @@ class Papago(commands.Cog):
     async def ptranslate(self, ctx, source, target, *, text):
         try:
             translation = await self.translate(source, target, text)
-        except NoAPIKey:
+        except ValueError:
             await ctx.send(f"Invalid API keys.  You can set them with "
                            f"`{ctx.prefix}set api papago client_id <CLIENT_ID> client_secret <CLIENT_SECRET>`")
             return
