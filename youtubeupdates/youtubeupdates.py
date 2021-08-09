@@ -3,7 +3,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from io import BytesIO
-from typing import Literal, Optional, Union
+from typing import Optional
 
 import aiohttp
 import discord
@@ -63,22 +63,13 @@ class YouTubeUpdates(commands.Cog):
             await asyncio.sleep(60 * await self.config.wait_minuts())
 
     async def do_loop(self):
-        endpoint = "https://youtube.googleapis.com/youtube/v3/{}"
-        keys = await self.bot.get_shared_api_tokens("youtube")
-
         last_check = datetime.fromtimestamp(await self.config.last_check() - 60 * 60, timezone.utc)
-        headers = {'Accept': 'application/json'}
 
         async with self.config.ytchannels() as full_channels:
             for ycid, cdata in full_channels.items():
-                params = {'part': 'snippet', 'channel_id': ycid, 'maxResults': 15, 'key': keys['apikey'],
-                          'order': 'date'}
-                async with self.session.get(endpoint.format('search'), params=params, headers=headers) as resp:
-                    data = await resp.json()
-                    if 'error' in data:
-                        print(data['error']['message'])
-                        return
-                    all_videos = data['items'][::-1]
+                data = await self.do_api_call('search', {'part': 'snippet', 'channel_id': ycid,
+                                                         'maxResults': 15, 'order': 'date'})
+                all_videos = data['items'][::-1]
                 videos = [v for v in all_videos
                           if isoparse(v['snippet']['publishedAt']) > last_check
                           and v['id']['videoId'] not in cdata.get('seen_ids', [])]
@@ -86,9 +77,8 @@ class YouTubeUpdates(commands.Cog):
                     continue
                 full_channels[ycid]['seen_ids'] = [v['id']['videoId'] for v in all_videos]
 
-                params = {'part': 'snippet,statistics', 'id': ycid, 'key': keys['apikey']}
-                async with self.session.get(endpoint.format('channels'), params=params, headers=headers) as resp:
-                    channel_data = (await resp.json())['items'][0]
+                data = await self.do_api_call('channels', {'part': 'snippet,statistics', 'id': ycid})
+                channel_data = data['items'][0]
 
                 for c_id in cdata['channels']:
                     if not (channel := self.bot.get_channel(c_id)):
@@ -150,7 +140,11 @@ class YouTubeUpdates(commands.Cog):
     @youtubeupdate.command(name="listall")
     async def ytuc_listall(self, ctx):
         """List all set up channels"""
-        for page in pagify('\n'.join(map(self.id_to_link, await self.config.ytchannels()))):
+        ytchannels = [self.id_to_link(ytcid)
+                      for ytcid, cdata in (await self.config.ytchannels()).items()]
+        if not ytchannels:
+            await ctx.send("There are no channels set up with this cog.")
+        for page in pagify('\n'.join(ytchannels)):
             await ctx.send(box(page))
 
     @youtubeupdate.command(name="list")
@@ -159,9 +153,11 @@ class YouTubeUpdates(commands.Cog):
         ytchannels = [self.id_to_link(ytcid)
                       for ytcid, cdata in (await self.config.ytchannels()).items()
                       if ctx.channel.id in cdata['channels']]
+        if not ytchannels:
+            await ctx.send("There are no YouTube channels set up in this Discord channel.")
         for page in pagify('\n'.join(ytchannels)):
             await ctx.send(box(page))
-    
+
     @youtubeupdate.command()
     @checks.is_owner()
     async def setreloadtime(self, ctx, reload_time: int):
@@ -193,17 +189,25 @@ class YouTubeUpdates(commands.Cog):
         if (match := CHANNEL_URL_REGEX.match(search_str)):
             return match.group(1)
 
-        params = {'part': 'snippet', 'forUsername': search_str, 'key': keys['apikey']}
-        async with self.session.get(endpoint.format('channels'), params=params, headers=headers) as resp:
-            data = await resp.json()
+        data = await self.do_api_call('channels', {'part': 'snippet', 'forUsername': search_str})
         if data['pageInfo']['totalResults']:
             return data['items'][0]['id']
 
-        params = {'part': 'snippet', 'id': search_str, 'key': keys['apikey']}
-        async with self.session.get(endpoint.format('channels'), params=params, headers=headers) as resp:
-            data = await resp.json()
+        data = await self.do_api_call('channels', {'part': 'snippet', 'id': search_str})
         if data['pageInfo']['totalResults']:
             return data['items'][0]['id']
+
+    async def do_api_call(self, service, params):
+        endpoint = "https://youtube.googleapis.com/youtube/v3/{}"
+        headers = {'Accept': 'application/json'}
+        params.update({'key': (await self.bot.get_shared_api_tokens("youtube"))['apikey']})
+
+        async with self.session.get(endpoint.format(service), params=params, headers=headers) as resp:
+            data = await resp.json()
+
+        if 'error' in data:
+            raise IOError(data['error']['message'])
+        return data
 
     def id_to_link(self, ytid):
         return 'https://www.youtube.com/channel/' + ytid
