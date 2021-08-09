@@ -3,7 +3,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from io import BytesIO
-from typing import Optional
+from typing import Optional, Tuple
 
 import aiohttp
 import discord
@@ -172,30 +172,31 @@ class YouTubeUpdates(commands.Cog):
         return "apikey" in keys
 
     async def ask_channel(self, ctx, search_str: str) -> Optional[str]:
-        channel_id = await self.get_channel(search_str)
+        channel_id, prompt = await self.get_channel(search_str)
         if channel_id is None:
             await ctx.send(f"Unable to find a channel matching `{search_str}`."
                            f" Try using a link to the channel instead.")
             return
-        if not await get_user_confirmation(ctx, f"Do you mean {self.id_to_link(channel_id)}?"):
+        if prompt and not await get_user_confirmation(ctx, f"Do you mean {self.id_to_link(channel_id)}?"):
             return
         return channel_id
 
-    async def get_channel(self, search_str: str) -> Optional[str]:
+    async def get_channel(self, search_str: str) -> Tuple[Optional[str], bool]:
         endpoint = "https://youtube.googleapis.com/youtube/v3/{}"
         headers = {'Accept': 'application/json'}
         keys = await self.bot.get_shared_api_tokens("youtube")
 
         if (match := CHANNEL_URL_REGEX.match(search_str)):
-            return match.group(1)
+            return match.group(1), False
 
         data = await self.do_api_call('channels', {'part': 'snippet', 'forUsername': search_str})
         if data['pageInfo']['totalResults']:
-            return data['items'][0]['id']
+            return data['items'][0]['id'], False
 
         data = await self.do_api_call('channels', {'part': 'snippet', 'id': search_str})
         if data['pageInfo']['totalResults']:
-            return data['items'][0]['id']
+            return data['items'][0]['id'], True
+        return None, False
 
     async def do_api_call(self, service, params):
         endpoint = "https://youtube.googleapis.com/youtube/v3/{}"
