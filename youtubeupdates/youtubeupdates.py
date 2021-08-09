@@ -11,7 +11,7 @@ from discord import Embed
 from discordmenu.embed.components import EmbedBodyImage, EmbedField, EmbedFooter, EmbedMain, EmbedThumbnail
 from discordmenu.embed.text import Text
 from discordmenu.embed.view import EmbedView
-from redbot.core import Config, commands
+from redbot.core import Config, checks, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import box, pagify
 
@@ -102,11 +102,7 @@ class YouTubeUpdates(commands.Cog):
     async def youtubeupdate(self, ctx):
         """Subcommand for YouTubeUpdate related commands."""
 
-    @youtubeupdate.group(name='channel', aliases=['channels'])
-    async def ytu_channel(self, ctx):
-        """Add or remove channels"""
-
-    @ytu_channel.command(name="add")
+    @youtubeupdate.command(name="add")
     @commands.has_guild_permissions(manage_messages=True)
     async def ytuc_add(self, ctx, url):
         """Add a channel"""
@@ -129,7 +125,7 @@ class YouTubeUpdates(commands.Cog):
         await self.config.guild(ctx.guild).channel_count.set(await self.config.guild(ctx.guild).channel_count() + 1)
         await ctx.tick()
 
-    @ytu_channel.command(name="remove", aliases=['rm', 'delete', 'del'])
+    @youtubeupdate.command(name="remove", aliases=['rm', 'delete', 'del'])
     @commands.has_guild_permissions(manage_messages=True)
     async def ytuc_rm(self, ctx, url):
         """Remove a channel"""
@@ -148,7 +144,7 @@ class YouTubeUpdates(commands.Cog):
         await self.config.guild(ctx.guild).channel_count.set(await self.config.guild(ctx.guild).channel_count() - 1)
         await ctx.tick()
 
-    @ytu_channel.command(name="listall")
+    @youtubeupdate.command(name="listall")
     async def ytuc_listall(self, ctx):
         """List all set up channels"""
         ytchannels = ['https://www.youtube.com/channel/' + ytcid
@@ -156,7 +152,7 @@ class YouTubeUpdates(commands.Cog):
         for page in pagify('\n'.join(ytchannels)):
             await ctx.send(box(page))
 
-    @ytu_channel.command(name="list")
+    @youtubeupdate.command(name="list")
     async def ytuc_list(self, ctx):
         """List the channels set in this channel"""
         ytchannels = ['https://www.youtube.com/channel/' + ytcid
@@ -164,6 +160,15 @@ class YouTubeUpdates(commands.Cog):
                       if ctx.channel.id in cdata['channels']]
         for page in pagify('\n'.join(ytchannels)):
             await ctx.send(box(page))
+    
+    @youtubeupdate.command()
+    @checks.is_owner()
+    async def setreloadtime(self, ctx, reload_time: int):
+        """Sets how often this cog checks for new videos"""
+        if reload_time < 1:
+            await ctx.send("reload_time must be at least 1 minute.")
+            return
+        await self.config.wait_minutes.set(reload_time)
 
     async def ensure_api(self) -> bool:
         keys = await self.bot.get_shared_api_tokens("youtube")
