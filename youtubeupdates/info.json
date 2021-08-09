@@ -1,0 +1,21 @@
+{
+  "author": [
+    "Aradia Megido#2552"
+  ],
+  "description": "Set up a Weverse feed for a channel",
+  "end_user_data_statement": "No personal data is stored.",
+  "install_msg": "Use [p]ytupdate to get started",
+  "short": "Weverse feed",
+  "min_bot_version": "3.4.0",
+  "max_bot_version": "0.0.0",
+  "min_python_version": [3, 8, 1],
+  "hidden": false,
+  "disabled": false,
+  "required_cogs": {
+    "papago": "https://github.com/chasehult/AradiaCogs"
+  },
+  "requirements": ["youtube"],
+  "tags": [
+    "YouTube"
+  ]
+}
