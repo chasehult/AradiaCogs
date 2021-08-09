@@ -60,7 +60,7 @@ class YouTubeUpdates(commands.Cog):
                 break
             except Exception:
                 logger.exception("Error in loop")
-            await asyncio.sleep(60 * await self.config.wait_minuts())
+            await asyncio.sleep(60 * await self.config.wait_minutes())
 
     async def do_loop(self):
         last_check = datetime.fromtimestamp(await self.config.last_check() - 60 * 60, timezone.utc)
