@@ -3,6 +3,7 @@ import logging
 import re
 from datetime import datetime, timezone
 from io import BytesIO
+from typing import Literal, Optional, Union
 
 import aiohttp
 import discord
@@ -14,6 +15,7 @@ from discordmenu.embed.view import EmbedView
 from redbot.core import Config, checks, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import box, pagify
+from tsutils import get_user_confirmation
 
 logger = logging.getLogger('red.aradiacogs.youtubeupdates')
 
@@ -104,7 +106,7 @@ class YouTubeUpdates(commands.Cog):
 
     @youtubeupdate.command(name="add")
     @commands.has_guild_permissions(manage_messages=True)
-    async def ytuc_add(self, ctx, url):
+    async def ytuc_add(self, ctx, *, channel):
         """Add a channel"""
         if await self.config.guild(ctx.guild).channel_count() >= 5 \
                 and ctx.author.id not in self.bot.owner_ids:
@@ -114,31 +116,32 @@ class YouTubeUpdates(commands.Cog):
         if not await self.ensure_api():
             await ctx.send(f"You need to set up your API keys with"
                            f" `{ctx.prefix}set api youtube apikey <API KEY>`")
-        if not (match := CHANNEL_URL_REGEX.match(url)):
-            await ctx.send("URL is not a valid youtube channel.")
+        ytc_id = await self.ask_channel(ctx, channel)
+        if ytc_id is None:
             return
-        ytc_id = match.group(1)
         async with self.config.ytchannels() as ytchannels:
             if ytc_id not in ytchannels:
                 ytchannels[ytc_id] = {'channels': []}
-            ytchannels[ytc_id]['channels'].append(ctx.channel.id)
+            if ctx.channel.id not in ytchannels[ytc_id]['channels']:
+                ytchannels[ytc_id]['channels'].append(ctx.channel.id)
         await self.config.guild(ctx.guild).channel_count.set(await self.config.guild(ctx.guild).channel_count() + 1)
         await ctx.tick()
 
     @youtubeupdate.command(name="remove", aliases=['rm', 'delete', 'del'])
     @commands.has_guild_permissions(manage_messages=True)
-    async def ytuc_rm(self, ctx, url):
+    async def ytuc_rm(self, ctx, channel):
         """Remove a channel"""
-        if not (match := CHANNEL_URL_REGEX.match(url)):
-            await ctx.send("URL is not a valid youtube channel.")
+        ytc_id = await self.ask_channel(ctx, channel)
+        if ytc_id is None:
             return
-        ytc_id = match.group(1)
         async with self.config.ytchannels() as ytchannels:
             if ytc_id not in ytchannels or \
                     ctx.channel.id not in ytchannels[ytc_id]['channels']:
                 await ctx.send("This channel is not configured to recieve updates"
                                " from that youtube channel.")
-            ytchannels[ytc_id]['channels'].remove(ctx.channel.id)
+                return
+            if ctx.channel.id in ytchannels[ytc_id]['channels']:
+                ytchannels[ytc_id]['channels'].remove(ctx.channel.id)
             if not ytchannels[ytc_id]['channels']:
                 del ytchannels[ytc_id]
         await self.config.guild(ctx.guild).channel_count.set(await self.config.guild(ctx.guild).channel_count() - 1)
@@ -147,15 +150,13 @@ class YouTubeUpdates(commands.Cog):
     @youtubeupdate.command(name="listall")
     async def ytuc_listall(self, ctx):
         """List all set up channels"""
-        ytchannels = ['https://www.youtube.com/channel/' + ytcid
-                      for ytcid in await self.config.ytchannels()]
-        for page in pagify('\n'.join(ytchannels)):
+        for page in pagify('\n'.join(map(self.id_to_link, await self.config.ytchannels()))):
             await ctx.send(box(page))
 
     @youtubeupdate.command(name="list")
     async def ytuc_list(self, ctx):
         """List the channels set in this channel"""
-        ytchannels = ['https://www.youtube.com/channel/' + ytcid
+        ytchannels = [self.id_to_link(ytcid)
                       for ytcid, cdata in (await self.config.ytchannels()).items()
                       if ctx.channel.id in cdata['channels']]
         for page in pagify('\n'.join(ytchannels)):
@@ -173,6 +174,39 @@ class YouTubeUpdates(commands.Cog):
     async def ensure_api(self) -> bool:
         keys = await self.bot.get_shared_api_tokens("youtube")
         return "apikey" in keys
+
+    async def ask_channel(self, ctx, search_str: str) -> Optional[str]:
+        channel_id = await self.get_channel(search_str)
+        if channel_id is None:
+            await ctx.send(f"Unable to find a channel matching `{search_str}`."
+                           f" Try using a link to the channel instead.")
+            return
+        if not await get_user_confirmation(ctx, f"Do you mean {self.id_to_link(channel_id)}?"):
+            return
+        return channel_id
+
+    async def get_channel(self, search_str: str) -> Optional[str]:
+        endpoint = "https://youtube.googleapis.com/youtube/v3/{}"
+        headers = {'Accept': 'application/json'}
+        keys = await self.bot.get_shared_api_tokens("youtube")
+
+        if (match := CHANNEL_URL_REGEX.match(search_str)):
+            return match.group(1)
+
+        params = {'part': 'snippet', 'forUsername': search_str, 'key': keys['apikey']}
+        async with self.session.get(endpoint.format('channels'), params=params, headers=headers) as resp:
+            data = await resp.json()
+        if data['pageInfo']['totalResults']:
+            return data['items'][0]['id']
+
+        params = {'part': 'snippet', 'id': search_str, 'key': keys['apikey']}
+        async with self.session.get(endpoint.format('channels'), params=params, headers=headers) as resp:
+            data = await resp.json()
+        if data['pageInfo']['totalResults']:
+            return data['items'][0]['id']
+
+    def id_to_link(self, ytid):
+        return 'https://www.youtube.com/channel/' + ytid
 
     def make_embed(self, video, channel_data) -> Embed:
         return EmbedView(
