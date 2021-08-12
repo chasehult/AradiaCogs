@@ -82,11 +82,13 @@ class YouTubeUpdates(commands.Cog):
                     data = await self.do_api_call('channels', {'part': 'snippet,statistics', 'id': ycid})
                     channel_data = data['items'][0]
 
-                    for c_id, info in cdata['channels'].items():
-                        if not (channel := self.bot.get_channel(int(c_id))):
-                            continue
-                        for video in videos:
-                            video_embed = self.make_embed(video, channel_data)
+                    for video in videos:
+                        data = await self.do_api_call('videos', {'part': 'statistics', 'id': video['id']['videoId']})
+                        video_data = data['items'][0]
+                        for c_id, info in cdata['channels'].items():
+                            if not (channel := self.bot.get_channel(int(c_id))):
+                                continue
+                            video_embed = self.make_embed(video, channel_data, video_data)
                             try:
                                 if (role := channel.guild.get_role(info.get('role'))) is not None:
                                     await channel.send(role.mention, embed=video_embed,
@@ -221,7 +223,7 @@ class YouTubeUpdates(commands.Cog):
     def id_to_link(self, ytid):
         return 'https://www.youtube.com/channel/' + ytid
 
-    def make_embed(self, video, channel_data) -> Embed:
+    def make_embed(self, video, channel_data, video_data) -> Embed:
         sub_count = channel_data['statistics']['subscriberCount'] \
             if not channel_data['statistics']["hiddenSubscriberCount"] \
             else "hidden"
@@ -235,8 +237,8 @@ class YouTubeUpdates(commands.Cog):
             ),
             embed_thumbnail=EmbedThumbnail(channel_data['snippet']['thumbnails']['default']['url']),
             embed_fields=[
+                EmbedField("Views", Text(video_data['statistics']['viewCount']), inline=True),
                 EmbedField("Subscribers", Text(sub_count), inline=True),
-                EmbedField("Views", Text(channel_data['statistics']['viewCount']), inline=True),
             ],
             embed_footer=EmbedFooter(
                 isoparse(video['snippet']['publishedAt']).strftime(
