@@ -1,4 +1,5 @@
 import asyncio
+import html
 import logging
 import re
 from datetime import datetime, timezone
@@ -67,27 +68,35 @@ class YouTubeUpdates(commands.Cog):
 
         async with self.config.ytchannels() as full_channels:
             for ycid, cdata in full_channels.items():
-                data = await self.do_api_call('search', {'part': 'snippet', 'channel_id': ycid,
-                                                         'maxResults': 15, 'order': 'date'})
-                all_videos = data['items'][::-1]
-                videos = [v for v in all_videos
-                          if isoparse(v['snippet']['publishedAt']) > last_check
-                          and v['id']['videoId'] not in cdata.get('seen_ids', [])]
-                if not videos:
-                    continue
-                full_channels[ycid]['seen_ids'] = [v['id']['videoId'] for v in all_videos]
-
-                data = await self.do_api_call('channels', {'part': 'snippet,statistics', 'id': ycid})
-                channel_data = data['items'][0]
-
-                for c_id in cdata['channels']:
-                    if not (channel := self.bot.get_channel(c_id)):
+                try:
+                    data = await self.do_api_call('search', {'part': 'snippet', 'channel_id': ycid, 'maxResults': 15,
+                                                             'order': 'date', 'type': 'video'})
+                    all_videos = data['items'][::-1]
+                    videos = [v for v in all_videos
+                              if isoparse(v['snippet']['publishedAt']) > last_check
+                              and v['id']['videoId'] not in cdata.get('seen_ids', [])]
+                    if not videos:
                         continue
-                    for video in videos:
-                        try:
-                            await channel.send(embed=self.make_embed(video, channel_data))
-                        except discord.Forbidden:
-                            pass
+                    full_channels[ycid]['seen_ids'] = [v['id']['videoId'] for v in all_videos]
+
+                    data = await self.do_api_call('channels', {'part': 'snippet,statistics', 'id': ycid})
+                    channel_data = data['items'][0]
+
+                    for c_id, info in cdata['channels'].items():
+                        if not (channel := self.bot.get_channel(int(c_id))):
+                            continue
+                        for video in videos:
+                            video_embed = self.make_embed(video, channel_data)
+                            try:
+                                if (role := channel.guild.get_role(info.get('role'))) is not None:
+                                    await channel.send(role.mention, embed=video_embed,
+                                                       allowed_mentions=discord.AllowedMentions(roles=True))
+                                else:
+                                    await channel.send(embed=video_embed)
+                            except discord.Forbidden:
+                                pass
+                except Exception:
+                    logger.exception("Error in loop.")
         await self.config.last_check.set(datetime.now().timestamp())
 
     @commands.group(aliases=['youtubeupdates', 'ytupdate', 'ytupdates'])
@@ -96,8 +105,9 @@ class YouTubeUpdates(commands.Cog):
 
     @youtubeupdate.command(name="add")
     @commands.has_guild_permissions(manage_messages=True)
-    async def ytuc_add(self, ctx, *, channel):
+    async def ytuc_add(self, ctx, role: Optional[discord.Role], *, channel):
         """Add a channel"""
+        role = role.id if role is not None else None
         if await self.config.guild(ctx.guild).channel_count() >= 5 \
                 and ctx.author.id not in self.bot.owner_ids:
             await ctx.send("You can't have more than five channels"
@@ -110,10 +120,9 @@ class YouTubeUpdates(commands.Cog):
         if ytc_id is None:
             return
         async with self.config.ytchannels() as ytchannels:
-            if ytc_id not in ytchannels:
-                ytchannels[ytc_id] = {'channels': []}
-            if ctx.channel.id not in ytchannels[ytc_id]['channels']:
-                ytchannels[ytc_id]['channels'].append(ctx.channel.id)
+            ytchannels[ytc_id] = {'channels': {}}
+            if str(ctx.channel.id) not in ytchannels[ytc_id]['channels']:
+                ytchannels[ytc_id]['channels'][str(ctx.channel.id)] = {'role': role}
         await self.config.guild(ctx.guild).channel_count.set(await self.config.guild(ctx.guild).channel_count() + 1)
         await ctx.tick()
 
@@ -126,12 +135,11 @@ class YouTubeUpdates(commands.Cog):
             return
         async with self.config.ytchannels() as ytchannels:
             if ytc_id not in ytchannels or \
-                    ctx.channel.id not in ytchannels[ytc_id]['channels']:
+                    str(ctx.channel.id) not in ytchannels[ytc_id]['channels']:
                 await ctx.send("This channel is not configured to recieve updates"
                                " from that youtube channel.")
                 return
-            if ctx.channel.id in ytchannels[ytc_id]['channels']:
-                ytchannels[ytc_id]['channels'].remove(ctx.channel.id)
+            del ytchannels[ytc_id]['channels'][str(ctx.channel.id)]
             if not ytchannels[ytc_id]['channels']:
                 del ytchannels[ytc_id]
         await self.config.guild(ctx.guild).channel_count.set(await self.config.guild(ctx.guild).channel_count() - 1)
@@ -152,7 +160,7 @@ class YouTubeUpdates(commands.Cog):
         """List the channels set in this channel"""
         ytchannels = [self.id_to_link(ytcid)
                       for ytcid, cdata in (await self.config.ytchannels()).items()
-                      if ctx.channel.id in cdata['channels']]
+                      if str(ctx.channel.id) in cdata['channels']]
         if not ytchannels:
             await ctx.send("There are no YouTube channels set up in this Discord channel.")
         for page in pagify('\n'.join(ytchannels)):
@@ -214,16 +222,20 @@ class YouTubeUpdates(commands.Cog):
         return 'https://www.youtube.com/channel/' + ytid
 
     def make_embed(self, video, channel_data) -> Embed:
+        sub_count = channel_data['statistics']['subscriberCount'] \
+            if not channel_data['statistics']["hiddenSubscriberCount"] \
+            else "hidden"
+
         return EmbedView(
             EmbedMain(
                 color=discord.Color.red(),
-                title=f"New Video: {video['snippet']['title']}",
+                title=f"New Video: {html.unescape(video['snippet']['title'])}",
                 url="https://www.youtube.com/watch?v=" + video['id']['videoId'],
-                description=video['snippet']['description'].split("\n\n")[0],
+                description=video['snippet']['description'].split("\n\n")[0][:2000],
             ),
             embed_thumbnail=EmbedThumbnail(channel_data['snippet']['thumbnails']['default']['url']),
             embed_fields=[
-                EmbedField("Subscribers", Text(channel_data['statistics']['subscriberCount']), inline=True),
+                EmbedField("Subscribers", Text(sub_count), inline=True),
                 EmbedField("Views", Text(channel_data['statistics']['viewCount']), inline=True),
             ],
             embed_footer=EmbedFooter(

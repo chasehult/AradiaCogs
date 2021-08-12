@@ -14,7 +14,7 @@
   "required_cogs": {
     "papago": "https://github.com/chasehult/AradiaCogs"
   },
-  "requirements": ["aiohttp", "tsutils"],
+  "requirements": ["aiohttp", "dateutil", "tsutils"],
   "tags": [
     "YouTube"
   ]
