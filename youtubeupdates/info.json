@@ -11,9 +11,7 @@
   "min_python_version": [3, 8, 1],
   "hidden": false,
   "disabled": false,
-  "required_cogs": {
-    "papago": "https://github.com/chasehult/AradiaCogs"
-  },
+  "required_cogs": {},
   "requirements": ["aiohttp", "python-dateutil", "tsutils"],
   "tags": [
     "YouTube"
