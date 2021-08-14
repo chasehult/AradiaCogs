@@ -1,18 +1,34 @@
 from collections import namedtuple
+from io import BytesIO
 
 import discord.utils
-from redbot.core import Config, commands
+from redbot.core import commands
 from redbot.core.utils.chat_formatting import box, inline, pagify
 
 EmbedField = namedtuple("EmbedField", "name value inline")
 
 
 class RepoInfo(commands.Cog):
+    """A cog to get information about specific repos or cogs
+
+    Credit to Red and d.py for some of this oh god save me
+    """
+
     def __init__(self, bot, *args, **kwargs):
         super().__init__(*args, **kwargs)
         self.bot = bot
 
-        self.config = Config.get_conf(self, identifier=23901770)
+    async def red_get_data_for_user(self, *, user_id):
+        """Get a user's personal data."""
+        data = "No data is stored for user with ID {}.\n".format(user_id)
+        return {"user_data.txt": BytesIO(data.encode())}
+
+    async def red_delete_data_for_user(self, *, requester, user_id):
+        """Delete a user's personal data.
+
+        No personal data is stored in this cog.
+        """
+        return
 
     @commands.command()
     async def repoinfo(self, ctx, repo_name):
@@ -103,7 +119,6 @@ class RepoInfo(commands.Cog):
             to_page = "\n".join(to_join)
             pages = [box(p) for p in pagify(to_page)]
             await rhf.send_pages(ctx, pages, embed=False, help_settings=hs)
-
 
     @commands.command()
     async def coginfo(self, ctx, cog_name):
