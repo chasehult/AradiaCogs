@@ -108,12 +108,13 @@ class RepoInfo(commands.Cog):
     @commands.command()
     async def coginfo(self, ctx, cog_name):
         cog = self.bot.get_cog(cog_name)
-        if cog is None:
+        if cog is None and cog_name in self.bot.extensions:
+            cog_name = self.bot.extensions[cog_name].__name__
             for cog in self.bot.cogs.values():
-                if cog.__module__.split('.')[0] == cog_name:
+                if cog.__module__.startswith(cog_name + '.') or cog.__module__ == cog_name:
                     break
-            else:
-                return await ctx.send(f"Cog `{cog_name}` not found.")
+        else:
+            return await ctx.send(f"Cog `{cog_name}` not found.")
 
         hs = await commands.help.HelpSettings.from_context(ctx)
         rhf = commands.help.RedHelpFormatter()
@@ -122,9 +123,9 @@ class RepoInfo(commands.Cog):
 
         if await ctx.embed_requested():
             emb = {"embed": {"title": "", "description": ""},
-                   "footer": {"text": ""}, "fields": []}
+                   "footer": {"text": f"For more help, use `{ctx.prefix}help <command_name>`"}, "fields": []}
 
-            title = f"**__{cog_name}:__**"
+            title = f"**__{cog.__module__.split('.')[0]}:__**"
 
             def shorten_line(a_line: str) -> str:
                 if len(a_line) < 70:
