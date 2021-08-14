@@ -123,7 +123,7 @@ class RepoInfo(commands.Cog):
 
         if await ctx.embed_requested():
             emb = {"embed": {"title": "", "description": ""},
-                   "footer": {"text": f"For more help, use `{ctx.prefix}help <command_name>`"}, "fields": []}
+                   "footer": {"text": f"For more help, use {ctx.prefix}help <command_name>"}, "fields": []}
 
             title = f"**__{cog.__module__.split('.')[0]}:__**"
 
