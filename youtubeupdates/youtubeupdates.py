@@ -16,7 +16,7 @@ from discordmenu.embed.view import EmbedView
 from redbot.core import Config, checks, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import box, pagify
-from tsutils import get_user_confirmation
+from tsutils.user_interaction import get_user_confirmation
 
 logger = logging.getLogger('red.aradiacogs.youtubeupdates')
 

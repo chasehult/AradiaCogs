@@ -1,9 +1,5 @@
-import asyncio
-import json
-import re
-from ply import lex
 from redbot.core import Config, checks, commands
-from redbot.core.utils.chat_formatting import box, inline, pagify
+from redbot.core.utils.chat_formatting import box, inline
 
 HSTRING = """The counter commands are the following:
 {0.prefix}addmoney          Add money to your team's counter.
@@ -35,8 +31,8 @@ class TUG(commands.Cog):
             (await self.config.user(ctx.author).drole()).get(str(ctx.guild.id)))
         if role is None:
             await ctx.send((
-                               "Either you don't have a default role set or your default role has been "
-                               "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(
+                "Either you don't have a default role set or your default role has been "
+                "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(
                 ctx))
             return
         if not await self.config.role(role).valid():
@@ -71,8 +67,8 @@ class TUG(commands.Cog):
             (await self.config.user(ctx.author).drole()).get(str(ctx.guild.id)))
         if role is None:
             await ctx.send((
-                               "Either you don't have a default role set or your default role has been "
-                               "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(
+                "Either you don't have a default role set or your default role has been "
+                "deleted from this guild.  Set it with {0.prefix}defaultrole.").format(
                 ctx))
             return
         if not await self.config.role(role).valid():

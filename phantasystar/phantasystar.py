@@ -6,7 +6,7 @@ import aiohttp
 from bs4 import BeautifulSoup
 from pytz import timezone
 from redbot.core import commands
-from redbot.core.utils.chat_formatting import humanize_timedelta, bold, inline, pagify
+from redbot.core.utils.chat_formatting import bold, humanize_timedelta, inline, pagify
 
 PST = timezone("America/Los_Angeles")
 

@@ -1,15 +1,14 @@
 import asyncio
 import logging
 import random
-from typing import Optional, List, Union
+from io import BytesIO
+from typing import Optional
 
 import aiohttp
 import discord
-from io import BytesIO
-from redbot.core import commands, Config
-from redbot.core.utils.chat_formatting import pagify
 from Weverse import WeverseClientAsync
-from redbot.core.utils.chat_formatting import humanize_list, inline
+from redbot.core import Config, commands
+from redbot.core.utils.chat_formatting import humanize_list, inline, pagify
 
 logger = logging.getLogger('red.aradiacogs.weverse')
 
@@ -212,30 +211,30 @@ class Weverse(commands.Cog):
                        f" comment notifications from {community_name}.")
 
     async def update_weverse(self):
-        """Process for checking for Weverse updates and sending to discord channels."""        
+        """Process for checking for Weverse updates and sending to discord channels."""
         if self.weverse_client is None or not self.weverse_client.cache_loaded:
             return
 
         await self.weverse_client.check_new_user_notifications()
         await asyncio.sleep(2)
-        
+
         allchans = await self.config.all_channels()
-        
+
         for notif in self.weverse_client.get_new_notifications():
             community_name = notif.community_name or notif.bold_element
             if not community_name or notif.id in await self.config.seen():
                 continue
             async with self.config.seen() as seen:
                 seen.append(notif.id)
-            await asyncio.sleep(1)    
+            await asyncio.sleep(1)
 
             channels = [(c_id, data['channels'][community_name.lower()])
                         for c_id, data in allchans.items()
                         if community_name.lower() in data['channels']]
-            
+
             if not channels:
                 continue
-            
+
             noti_type = self.weverse_client.determine_notification_type(notif.message)
             embed_title = f"New {community_name} Notification!"
             is_comment = False
@@ -247,25 +246,27 @@ class Weverse(commands.Cog):
                 embed, message_text = await self.set_post_embed(notif, embed_title)
             elif noti_type == 'media':
                 embed, message_text = await self.set_media_embed(notif, embed_title)
-            elif noti_type == 'announcement':                
-                embed_list = await self.set_announcement_embed(notif, embed_title) 
+            elif noti_type == 'announcement':
+                embed_list = await self.set_announcement_embed(notif, embed_title)
             else:
                 continue
 
             if not embed:
-               continue
-             
+                continue
+
             for channel_id, data in channels:
                 if embed:
-                    await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment, community_name)
+                    await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment,
+                                                       community_name)
                     continue
-                    
+
                 embed = embed_list
                 for embed_single in embed:
                     embed = embed_single
-                    await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment, community_name)
+                    await self.send_weverse_to_channel(channel_id, data, message_text, embed, is_comment,
+                                                       community_name)
                     continue
-                        
+
     async def set_comment_embed(self, notification, embed_title):
         """Set Comment Embed for Weverse."""
         comment_body = await self.weverse_client.fetch_comment_body(notification.community_id, notification.contents_id)
@@ -283,13 +284,14 @@ class Weverse(commands.Cog):
                              (f"\nTranslated Content: **{translation}**" if translation else ""))
         embed = discord.Embed(title=embed_title, description=embed_description,
                               color=discord.Color(random.randint(0x000000, 0xffffff)))
-        embed.set_footer(text="💢Do .weverse for the help💜", icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
+        embed.set_footer(text="💢Do .weverse for the help💜",
+                         icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
         embed.set_author(name="Weverse", url="https://top.gg/bot/388331085060112397/",
-                         icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')                             
+                         icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')
         return embed
-        await asyncio.sleep(1)        
-        return None    
-        
+        await asyncio.sleep(1)
+        return None
+
     async def set_post_embed(self, notification, embed_title):
         """Set Post Embed for Weverse."""
         post = self.weverse_client.get_post_by_id(notification.contents_id)
@@ -303,77 +305,81 @@ class Weverse(commands.Cog):
                                  (f"\nTranslated Content: **{translation}**" if translation else ""))
             embed = discord.Embed(title=embed_title, description=embed_description,
                                   color=discord.Color(random.randint(0x000000, 0xffffff)))
-            embed.set_footer(text="💢Do .weverse for help💜", icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
+            embed.set_footer(text="💢Do .weverse for help💜",
+                             icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
             embed.set_author(name="Weverse", url="https://top.gg/bot/388331085060112397/",
-                             icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')                                    
-            message = "\n".join(photo.original_img_url for photo in post.photos)      
+                             icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')
+            message = "\n".join(photo.original_img_url for photo in post.photos)
             return embed, message
             await asyncio.sleep(1)
         return None, None
-        
+
     async def set_media_embed(self, notification, embed_title):
         """Set Media Embed for Weverse."""
         media = self.weverse_client.get_media_by_id(notification.contents_id)
         if media:
             translation = await self.translate(media.body)
-            
+
             embed_description = (f"**{notification.message}**\n\n" \
-                                f"Title: **{media.title}**\n" \
-                                f"Content: **{media.body}**\n" +
-                                (f"\nTranslated Content: **{translation}**" if translation else ""))
+                                 f"Title: **{media.title}**\n" \
+                                 f"Content: **{media.body}**\n" +
+                                 (f"\nTranslated Content: **{translation}**" if translation else ""))
             embed = discord.Embed(title=embed_title, description=embed_description,
                                   color=discord.Color(random.randint(0x000000, 0xffffff)))
-            embed.set_footer(text="💢Do .weverse for help💜", icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
+            embed.set_footer(text="💢Do .weverse for help💜",
+                             icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
             embed.set_author(name="Weverse", url="https://top.gg/bot/388331085060112397/",
-                             icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')                                  
+                             icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')
             video_link = media.video_link
-            
-            message = "\n".join(photo.original_img_url for photo in media.photos) 
-                        
+
+            message = "\n".join(photo.original_img_url for photo in media.photos)
+
             if video_link:
                 message = f"{message}\n{video_link}"
-            
+
             await asyncio.sleep(1)
             return embed, message
         return None, None
-        
+
     async def set_announcement_embed(self, notification, embed_title):
         """Set Announcement Embed for Weverse.
         :param model_object: Notification object, Announcement object, or Announcement id.
         :returns: Embed, file locations, and image urls.
         """
         announcement = self.weverse_client.get_announcement_by_id(notification.contents_id)
-        if announcement:  
+        if announcement:
             translation = await self.translate(announcement.content)
-            
+
             embed_description = f"**{notification.message}**\n\n" \
                                 f"Title: **{announcement.title}**\n" \
-                                f"Content: **{announcement.content}**"                                
-            embed_list = []                   
-            for text in pagify(embed_description):            
+                                f"Content: **{announcement.content}**"
+            embed_list = []
+            for text in pagify(embed_description):
                 images_url = announcement.image_url
-                em = discord.Embed(title=embed_title, description=None, color=discord.Color(random.randint(0x000000, 0xffffff)))
+                em = discord.Embed(title=embed_title, description=None,
+                                   color=discord.Color(random.randint(0x000000, 0xffffff)))
                 em.set_image(url=images_url)
-                em.set_footer(text="💢Do .weverse for help💜", icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
+                em.set_footer(text="💢Do .weverse for help💜",
+                              icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870106439178403840/ezgif-2-441a54352e45.gif')
                 em.set_author(name="Weverse", url="https://top.gg/bot/388331085060112397/",
-                                 icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')
-                em.description = text                 
+                              icon_url='https://cdn.discordapp.com/attachments/574296586742398997/870104878310129744/weverse.png')
+                em.description = text
                 embed.append(em)
-                return embed                
-        return None           
+                return embed
+        return None
 
     async def send_weverse_to_channel(self, channel_id, channel_data, message_text, embed, is_comment, community_name):
         role_id = channel_data['role_id']
         comments_enabled = channel_data['show_comments']
         if not is_comment or comments_enabled:
-            channel = self.bot.get_channel(channel_id)         
+            channel = self.bot.get_channel(channel_id)
             try:
                 mention_role = f"<@&{role_id}>" if role_id else None
                 await channel.send(mention_role, embed=embed, allowed_mentions=discord.AllowedMentions(roles=True))
-                await asyncio.sleep(1)                
+                await asyncio.sleep(1)
                 if message_text:
-                    await channel.send(message_text)   
-                    await asyncio.sleep(1)                    
+                    await channel.send(message_text)
+                    await asyncio.sleep(1)
             except Exception:
                 pass
 

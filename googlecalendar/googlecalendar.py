@@ -1,19 +1,17 @@
-import aiohttp
-import asyncio
 import datetime
-import discord
 import logging
-import os.path
 import pickle
-import pytz
 import re
+from urllib.parse import quote_plus
+
+import aiohttp
+import discord
+import pytz
 from google.auth.transport.requests import Request
-from google_auth_oauthlib.flow import Flow, InstalledAppFlow
-from googleapiclient.discovery import build
-from redbot.core import Config, checks, commands, modlog
+from google_auth_oauthlib.flow import InstalledAppFlow
+from redbot.core import Config, commands
 from redbot.core.bot import Red
 from redbot.core.utils.chat_formatting import box, inline, pagify
-from urllib.parse import quote_plus
 
 logger = logging.getLogger('red.misc-cogs.googlecalendar')
 
@@ -150,8 +148,8 @@ class GoogleCalendar(commands.Cog):
 
         if 'error' in raw_data:
             await ctx.send((
-                               "Error authenticating.  Ask the bot owner to run `{0.prefix}googlecalendar"
-                               " authenticate` again.  Check your logs for more details.").format(
+                "Error authenticating.  Ask the bot owner to run `{0.prefix}googlecalendar"
+                " authenticate` again.  Check your logs for more details.").format(
                 ctx))
             logger.error(str(raw_data))
             return
@@ -204,8 +202,8 @@ class GoogleCalendar(commands.Cog):
         if None in (installed['client_id'], installed['client_secret'],
                     installed['project_id']):
             await ctx.send((
-                               "API key not set up.  Use `{0.prefix}set api google project_id <PROJECTID>"
-                               " client_id <CLIENTID> client_secret <CLIENTSECRET>`").format(
+                "API key not set up.  Use `{0.prefix}set api google project_id <PROJECTID>"
+                " client_id <CLIENTID> client_secret <CLIENTSECRET>`").format(
                 ctx))
             return
 

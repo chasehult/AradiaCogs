@@ -1,14 +1,8 @@
 import urllib.parse
+from typing import Dict
 
 import aiohttp
-import hmac
-import base64
-import time
-import uuid
-
-from typing import Dict, Optional, Literal
-
-from aiohttp.web_exceptions import HTTPInternalServerError, HTTPError
+from aiohttp.web_exceptions import HTTPError
 
 
 class NoAuthKey(Exception):

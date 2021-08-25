@@ -1,9 +1,9 @@
 {
   "author": ["Aradia Megido#2552"],
-  "description": "Set up notification for youtube videos",
+  "description": "Lookup Gfycat gifs",
   "end_user_data_statement": "No personal data is stored.",
-  "install_msg": "Use [p]ytupdates to get started",
-  "short": "Youtube Updates",
+  "install_msg": "Use [p]gfy to get started",
+  "short": "Gfycat Search",
   "min_bot_version": "3.4.0",
   "max_bot_version": "0.0.0",
   "min_python_version": [3, 8, 1],
@@ -12,8 +12,7 @@
   "required_cogs": {},
   "requirements": [
     "aiohttp",
-    "python-dateutil",
     "tsutils==5.0.0"
   ],
-  "tags": ["YouTube"]
+  "tags": ["Gfycat"]
 }

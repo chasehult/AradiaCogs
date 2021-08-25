@@ -4,9 +4,9 @@ from io import BytesIO
 
 import discord
 import emoji as emoji_module
-from redbot.core import checks, commands, Config
+from redbot.core import Config, checks, commands
 from redbot.core.utils.chat_formatting import box, inline, pagify
-from tsutils import get_user_confirmation
+from tsutils.user_interaction import get_user_confirmation
 
 logger = logging.getLogger('red.misc-cogs.grantrole')
 
@@ -136,8 +136,8 @@ class Lottery(commands.Cog):
             async with self.config.guild(ctx.guild).lotteries() as lotteries:
                 todel = [lot for lot in lotteries if lotteries[lot].get("prizelist") == name]
                 if (not todel) or await get_user_confirmation(ctx,
-                                                        "Deleting this prizelist will also delete the following lotteries:\n" +
-                                                        box(", ".join(todel))):
+                                                              "Deleting this prizelist will also delete the following lotteries:\n" +
+                                                              box(", ".join(todel))):
                     for lot in todel:
                         del lotteries[lot]
                     del pools[name]

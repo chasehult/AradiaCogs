@@ -1,11 +1,12 @@
 import asyncio
-import discord
-import logging
-import emoji as emoji_module
 import datetime
+import logging
 import re
-from redbot.core import checks, commands, Config, modlog
-from redbot.core.utils.chat_formatting import box, inline, pagify
+from io import BytesIO
+
+import discord
+import emoji as emoji_module
+from redbot.core import Config, commands
 
 logger = logging.getLogger('red.RedbotCogs.signup')
 
@@ -16,6 +17,7 @@ TIME_STRINGS = {
     'd': 'days',
     'w': 'weeks',
 }
+
 
 class SignUp(commands.Cog):
     """Signup Cog"""
@@ -29,7 +31,7 @@ class SignUp(commands.Cog):
         self._loop = bot.loop.create_task(self.signup_loop())
 
     def cog_unload(self):
-         self._loop.cancel()
+        self._loop.cancel()
 
     async def red_get_data_for_user(self, *, user_id):
         """Get a user's personal data."""
@@ -61,7 +63,7 @@ class SignUp(commands.Cog):
                            f" `3d` for 3 days.")
             return
         time = datetime.timedelta(**{TIME_STRINGS[u]: int(a) for a, u in r})
-        attime = datetime.datetime.now()+time
+        attime = datetime.datetime.now() + time
 
         await ctx.message.delete()
         m = await ctx.send(f"{role.mention}\n\n"
@@ -98,15 +100,14 @@ class SignUp(commands.Cog):
                         except Exception:
                             continue
 
-
                         reaction = discord.utils.find(
-                                     lambda r: r.emoji.id == data['emoji'].id
-                                               if isinstance(
-                                                   data['emoji'],
-                                                   (discord.Emoji, discord.PartialEmoji))
-                                               else r.emoji == data['emoji'],
-                                     m.reactions
-                                   )
+                            lambda r: r.emoji.id == data['emoji'].id
+                            if isinstance(
+                                data['emoji'],
+                                (discord.Emoji, discord.PartialEmoji))
+                            else r.emoji == data['emoji'],
+                            m.reactions
+                        )
 
                         if not reaction and datetime.datetime.now().timestamp() > data['time']:
                             del events[event]
@@ -117,16 +118,17 @@ class SignUp(commands.Cog):
                                              for c, u
                                              in enumerate([u
                                                            for u
-                                                           in await reaction.users(limit=data['maxusers']+1).flatten()
+                                                           in await reaction.users(limit=data['maxusers'] + 1).flatten()
                                                            if u != self.bot.user], 1))
                             await m.delete()
                             a = self.bot.get_user(data['author'])
-                            tdiff = datetime.timedelta(seconds=max(0, data['time']-datetime.datetime.now().timestamp()))
+                            tdiff = datetime.timedelta(
+                                seconds=max(0, data['time'] - datetime.datetime.now().timestamp()))
                             await c.send(f"{a.mention if a else '@deleted-user'}\n\n"
-                                         f"{reaction.count-1} user(s) have signed up for\n"
+                                         f"{reaction.count - 1} user(s) have signed up for\n"
                                          f"**{data['eventname']}**\n\n"
                                          f"{ustr}\n\n"
-                                         f"Please meet up with {a.mention}{' in '+str(tdiff).split('.')[0] if tdiff else ''}")
+                                         f"Please meet up with {a.mention}{' in ' + str(tdiff).split('.')[0] if tdiff else ''}")
                             del events[event]
 
             except asyncio.CancelledError:
