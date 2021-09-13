@@ -20,7 +20,7 @@ from tsutils.user_interaction import get_user_confirmation
 
 logger = logging.getLogger('red.aradiacogs.youtubeupdates')
 
-CHANNEL_URL_REGEX = re.compile(r"^(?:https?://)?(?:www\.)?youtube\.com/(?:channel|user)/([\w-]+)")
+CHANNEL_URL_REGEX = re.compile(r"^(?:https?://)?(?:www\.)?youtube\.com/(?:channel)/([\w-]+)")
 
 
 class YouTubeUpdates(commands.Cog):
@@ -101,7 +101,7 @@ class YouTubeUpdates(commands.Cog):
                     logger.exception("Error in loop.")
         await self.config.last_check.set(datetime.now().timestamp())
 
-    @commands.group(aliases=['youtubeupdates', 'ytupdate', 'ytupdates'])
+    @commands.group(aliases=['youtubeupdates', 'ytupdate', 'ytupdates', 'Tube', 'tube'])
     async def youtubeupdate(self, ctx):
         """Subcommand for YouTubeUpdate related commands."""
 
@@ -148,6 +148,7 @@ class YouTubeUpdates(commands.Cog):
         await ctx.tick()
 
     @youtubeupdate.command(name="listall")
+    @checks.is_owner()
     async def ytuc_listall(self, ctx):
         """List all set up channels"""
         ytchannels = [self.id_to_link(ytcid)
@@ -176,6 +177,7 @@ class YouTubeUpdates(commands.Cog):
             await ctx.send("reload_time must be at least 1 minute.")
             return
         await self.config.wait_minutes.set(reload_time)
+        await ctx.tick()
 
     async def ensure_api(self) -> bool:
         keys = await self.bot.get_shared_api_tokens("youtube")
