@@ -122,7 +122,8 @@ class YouTubeUpdates(commands.Cog):
         if ytc_id is None:
             return
         async with self.config.ytchannels() as ytchannels:
-            ytchannels[ytc_id] = {'channels': {}}
+            if ytc_id not in ytchannels:
+                ytchannels[ytc_id] = {'channels': {}}
             if str(ctx.channel.id) not in ytchannels[ytc_id]['channels']:
                 ytchannels[ytc_id]['channels'][str(ctx.channel.id)] = {'role': role}
         await self.config.guild(ctx.guild).channel_count.set(await self.config.guild(ctx.guild).channel_count() + 1)
