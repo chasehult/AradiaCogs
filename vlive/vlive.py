@@ -8,6 +8,7 @@ from typing import NoReturn
 
 import aiohttp
 import discord
+from aiohttp import ClientResponseError
 from discordmenu.embed.components import EmbedBodyImage, EmbedField, EmbedFooter, EmbedMain, EmbedThumbnail
 from discordmenu.embed.text import Text
 from discordmenu.embed.view import EmbedView
@@ -92,10 +93,17 @@ class VLive(commands.Cog):
         async with self.config.channels() as channels:
             if channel_name not in channels:
                 async with self.config.seen() as seen:
-                    for video in (await self.get_data(channel_name))['data']:
-                        seen.append(video['postId'])
+                    try:
+                        for video in (await self.get_data(channel_name))['data']:
+                            seen.append(video['postId'])
+                    except ClientResponseError as cre:
+                        if cre.status == 404:
+                            return await ctx.send("Invalid channel.")
                 channels[channel_name] = []
             role_id = role.id if role else None
+            for conf in channels[channel_name][:]:
+                if conf['channel'] == ctx.channel.id:
+                    channels[channel_name].remove(conf)
             channels[channel_name].append({'channel': ctx.channel.id, 'role': role_id})
         await ctx.tick()
 
