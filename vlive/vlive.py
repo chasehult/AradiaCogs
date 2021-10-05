@@ -76,7 +76,10 @@ class VLive(commands.Cog):
                     for conf in vdata:
                         if (channel := self.bot.get_channel(conf['channel'])) is None:
                             continue
-                        await channel.send(conf.get('role') or '', embed=embed)
+                        text = ""
+                        if conf.get('role'):
+                            text = f"<@&{conf['role']}>"
+                        await channel.send(text, embed=embed)
                     seen.append(video['postId'])
 
     @commands.group()
