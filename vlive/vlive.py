@@ -75,7 +75,7 @@ class VLive(commands.Cog):
                     for conf in vdata:
                         if (channel := self.bot.get_channel(conf['channel'])) is None:
                             continue
-                        await channel.send(embed=embed)
+                        await channel.send(conf.get('role') or '', embed=embed)
                     seen.append(video['postId'])
 
     @commands.group()
@@ -83,7 +83,7 @@ class VLive(commands.Cog):
         """The base command for VLive related subcommands"""
 
     @vlive.command(name="add")
-    async def v_add(self, ctx, channel_name, role: discord.Role):
+    async def v_add(self, ctx, channel_name, role: discord.Role = None):
         """Subscribe to a VLive channel in this Discord channel"""
         if 'appID' not in await self.bot.get_shared_api_tokens("vlive"):
             return await ctx.send(f"You need to set up your app ID with"
@@ -95,7 +95,8 @@ class VLive(commands.Cog):
                     for video in (await self.get_data(channel_name))['data']:
                         seen.append(video['postId'])
                 channels[channel_name] = []
-            channels[channel_name].append({'channel': ctx.channel.id, 'role': role.id})
+            role_id = role.id if role else None
+            channels[channel_name].append({'channel': ctx.channel.id, 'role': role_id})
         await ctx.tick()
 
     @vlive.command(name="remove")
