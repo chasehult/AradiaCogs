@@ -14,7 +14,7 @@ from discordmenu.embed.text import Text
 from discordmenu.embed.view import EmbedView
 from redbot.core import Config, commands
 from redbot.core.bot import Red
-from redbot.core.utils.chat_formatting import inline
+from redbot.core.utils.chat_formatting import box
 from tsutils.helper_functions import repeating_timer
 
 logger = logging.getLogger('red.aradiacogs.vlive')
@@ -126,7 +126,11 @@ class VLive(commands.Cog):
     async def v_list(self, ctx):
         """List all subscribed VLive channels"""
         channels = await self.config.channels()
-        await ctx.send(', '.join(map(inline, channels)))
+        valid_channels = []
+        for vc, data in channels.items():
+            if any(ctx.channel.id == conf['channel'] for conf in data):
+                valid_channels.append(f"{(await self.get_data(vc))['data'][0]['channel']['channelName']} ({vc})")
+        await ctx.send(box('\n'.join(valid_channels)))
 
     async def get_data(self, channel):
         app_id = (await self.bot.get_shared_api_tokens("vlive"))['appID']
