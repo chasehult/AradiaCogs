@@ -63,13 +63,15 @@ class VLive(commands.Cog):
 
     async def do_check(self):
         async def get_both_data(vc, vd):
-            return (await self.get_data(vc))['data'], vd
+            return await self.get_data(vc), vd
 
         last_check = await self.config.last_check()
         aws = [get_both_data(vc, vd) for vc, vd in (await self.config.channels()).items()]
         for aw in asyncio.as_completed(aws):
             data, vdata = await aw
-            await self.send_channel_data(data, vdata, last_check)
+            if not data:
+                continue
+            await self.send_channel_data(data['data'], vdata, last_check)
 
     async def send_channel_data(self, data, vdata, last_check):
         for video in data:
