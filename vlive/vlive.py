@@ -1,6 +1,7 @@
 import asyncio
 import html
 import logging
+import time
 from contextlib import suppress
 from datetime import datetime
 from io import BytesIO
@@ -8,7 +9,6 @@ from typing import NoReturn
 
 import aiohttp
 import discord
-from aiohttp import ClientResponseError
 from discordmenu.embed.components import EmbedBodyImage, EmbedField, EmbedFooter, EmbedMain, EmbedThumbnail
 from discordmenu.embed.text import Text
 from discordmenu.embed.view import EmbedView
@@ -18,7 +18,8 @@ from redbot.core.utils.chat_formatting import box
 from tsutils.helper_functions import repeating_timer
 
 logger = logging.getLogger('red.aradiacogs.vlive')
-fields = "author,channel{channelName,channelCode},officialVideo,thumbnail,title,url"
+fields = "author,channel{channelName,channelCode},createdAt," \
+         "officialVideo,thumbnail,title,url"
 
 
 class VLive(commands.Cog):
@@ -27,7 +28,7 @@ class VLive(commands.Cog):
         self.bot = bot
 
         self.config = Config.get_conf(self, identifier=77173)
-        self.config.register_global(seen=[], channels={})
+        self.config.register_global(channels={}, last_check=time.time())
 
         self.session = aiohttp.ClientSession()
 
@@ -61,19 +62,20 @@ class VLive(commands.Cog):
                     logger.exception("Error in loop:")
 
     async def do_check(self):
-        async with self.config.seen() as seen:
-            async def get_both_data(vc, vd):
-                return (await self.get_data(vc))['data'], vd
-            aws = [get_both_data(vc, vd) for vc, vd in (await self.config.channels()).items()]
-            for aw in asyncio.as_completed(aws):
-                data, vdata = await aw
-                await self.send_channel_data(data, vdata, seen)
+        async def get_both_data(vc, vd):
+            return (await self.get_data(vc))['data'], vd
 
-    async def send_channel_data(self, data, vdata, seen):
+        last_check = await self.config.last_check()
+        aws = [get_both_data(vc, vd) for vc, vd in (await self.config.channels()).items()]
+        for aw in asyncio.as_completed(aws):
+            data, vdata = await aw
+            await self.send_channel_data(data, vdata, last_check)
+
+    async def send_channel_data(self, data, vdata, last_check):
         for video in data:
             if 'officialVideo' not in video:
                 continue
-            if video['postId'] in seen:
+            if video['createdAt'] <= last_check:
                 continue
             with suppress(discord.Forbidden):
                 embed = await self.send_video(video)
@@ -84,7 +86,8 @@ class VLive(commands.Cog):
                 if conf.get('role'):
                     text = f"<@&{conf['role']}>"
                 await channel.send(text, embed=embed)
-            seen.append(video['postId'])
+            if video['createdAt'] > await self.config.last_check():
+                await self.config.last_check.set(video['createdAt'])
 
     @commands.group()
     async def vlive(self, ctx):
@@ -99,13 +102,6 @@ class VLive(commands.Cog):
 
         async with self.config.channels() as channels:
             if channel_name not in channels:
-                async with self.config.seen() as seen:
-                    try:
-                        for video in (await self.get_data(channel_name))['data']:
-                            seen.append(video['postId'])
-                    except ClientResponseError as cre:
-                        if cre.status == 404:
-                            return await ctx.send("Invalid channel.")
                 channels[channel_name] = []
             role_id = role.id if role else None
             for conf in channels[channel_name][:]:
