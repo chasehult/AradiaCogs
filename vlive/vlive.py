@@ -18,10 +18,7 @@ from redbot.core.utils.chat_formatting import box
 from tsutils.helper_functions import repeating_timer
 
 logger = logging.getLogger('red.aradiacogs.vlive')
-fields = "attachments,author,availableActions,channel{channelName,channelCode}," \
-         "totalCommentCount,createdAt,emotionCount,lastModifierMember,notice," \
-         "officialVideo,originPost,plainBody,postId,postVersion,reservation," \
-         "starReactions,targetMember,thumbnail,title,url,writtenIn"
+fields = "author,channel{channelName,channelCode},officialVideo,thumbnail,title,url"
 
 
 class VLive(commands.Cog):
@@ -65,22 +62,29 @@ class VLive(commands.Cog):
 
     async def do_check(self):
         async with self.config.seen() as seen:
-            for vchannel, vdata in (await self.config.channels()).items():
-                for video in (await self.get_data(vchannel))['data']:
-                    if 'officialVideo' not in video:
-                        continue
-                    if video['postId'] in seen:
-                        continue
-                    with suppress(discord.Forbidden):
-                        embed = await self.send_video(video)
-                    for conf in vdata:
-                        if (channel := self.bot.get_channel(conf['channel'])) is None:
-                            continue
-                        text = ""
-                        if conf.get('role'):
-                            text = f"<@&{conf['role']}>"
-                        await channel.send(text, embed=embed)
-                    seen.append(video['postId'])
+            async def get_both_data(vc, vd):
+                return (await self.get_data(vc))['data'], vd
+            aws = [get_both_data(vc, vd) for vc, vd in (await self.config.channels()).items()]
+            for aw in asyncio.as_completed(aws):
+                data, vdata = await aw
+                await self.send_channel_data(data, vdata, seen)
+
+    async def send_channel_data(self, data, vdata, seen):
+        for video in data:
+            if 'officialVideo' not in video:
+                continue
+            if video['postId'] in seen:
+                continue
+            with suppress(discord.Forbidden):
+                embed = await self.send_video(video)
+            for conf in vdata:
+                if (channel := self.bot.get_channel(conf['channel'])) is None:
+                    continue
+                text = ""
+                if conf.get('role'):
+                    text = f"<@&{conf['role']}>"
+                await channel.send(text, embed=embed)
+            seen.append(video['postId'])
 
     @commands.group()
     async def vlive(self, ctx):
@@ -148,7 +152,7 @@ class VLive(commands.Cog):
         return EmbedView(
             EmbedMain(
                 color=discord.Color(0x82ecf5),
-                title=f"{video['author']['officialName']}"
+                title=f"{video['author'].get('officialName') or video['author'].get('nickname')}"
                       f" {'Now Live' if video['officialVideo']['type'] == 'LIVE' else 'New Video'}:"
                       f" {html.unescape(video['officialVideo']['multinationalTitles'][0]['label'])}",
                 url=video['url']
@@ -160,7 +164,7 @@ class VLive(commands.Cog):
             ],
             embed_footer=EmbedFooter(
                 datetime.fromtimestamp(video['officialVideo']['willStartAt'] // 1000).strftime(
-                    f"Posted by {video['author']['officialName']} at %X %Z on %A %B %d, %Y"
+                    f"Posted at %X %Z on %A %B %d, %Y"
                 ),
                 "https://i.imgur.com/gHo7BTO.png"
             ),
