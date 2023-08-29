@@ -12,7 +12,20 @@ BLURBS = {
         "Ryan Cooper is a well known influencer, known for his popular FNAF playthroughs.  He's known better by his"
         " username, The Grunglo, or, as he is known widely online, Grungle Daddy. He rose to fame on YouTube, and does"
         " streams often with other famous YouTubers.  He's never been involved in a controvercy of any real merit, and"
-        " often calls himself the least problematic guy on the internet."
+        " often calls himself the least problematic guy on the internet.",
+
+        "To live in Japan and not know of Chika Fujita is the most surefire way to identify yourself as either a hermit"
+        " or an adult. The idol sensation has captured the hearts of millions across both Japan and the West, and it’s"
+        " not difficult to see why. With a smile that could charm even the most reclusive of people and a voice akin to"
+        " that of an angel, Chika-chan is the face of the idol industry. Perhaps unusual for an idol, she has changed"
+        " affiliations about a dozen times over her two-year career. According to interviews Chika just “doesn’t always"
+        " feel the group chemistry”, finding it difficult to get in sync with many of her fellow idols after a while"
+        " and often quitting out of frustration. Given her immense popularity, it seems as though this strategy"
+        " is more of a benefit than a drawback. Her fanbase is as devoted as they come, for better and for worse."
+        " The companies she’s worked for that she was less than fond of have often faded into obscurity, as the bad"
+        " press of putting off the Chika Fujita is enough to mark a slow and financially ruinous end from the general"
+        " idol-loving public. She has tried her best to encourage her fans not to be vengeful to other innocent idols,"
+        " but there’s no stopping the fanboys."
     ],
     'troll': [
         "Ekiyam Wubaru is a nine-sweep-old hip hop star/chart-topping slam poet, known for hir unique style of"
