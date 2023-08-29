@@ -233,6 +233,7 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         random.shuffle(blurbs['human'])
         random.shuffle(blurbs['troll'])
 
+        random.shuffle(players)
         shuffled = players[:]
         shuffled.append(shuffled.pop(0))
 
