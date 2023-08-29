@@ -1,0 +1,23 @@
+{
+  "author": [
+    "Aradia Megido#2552"
+  ],
+  "description": "I want a badge, and to get it, I need a slash command",
+  "end_user_data_statement": "No personal data is stored.",
+  "install_msg": "Yay! You can get a badge now!",
+  "short": "Badge for Aradia",
+  "min_bot_version": "3.4.0",
+  "max_bot_version": "0.0.0",
+  "min_python_version": [
+    3,
+    8,
+    1
+  ],
+  "hidden": false,
+  "disabled": false,
+  "required_cogs": {},
+  "requirements": [],
+  "tags": [
+    "badge"
+  ]
+}
