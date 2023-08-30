@@ -17,7 +17,7 @@ class DMMixin:
         players = {}
         from_handle = None
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner or data['lurking']:
+            if not data['player'] or not ctx.guild.get_member(mid):
                 continue
             player = data['player']
             if mid == ctx.author.id:
@@ -41,7 +41,7 @@ class DMMixin:
         players = {}
         my_handle = None
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner or data['lurking']:
+            if not data['player'] or not ctx.guild.get_member(mid):
                 continue
             player = data['player']
             if mid == ctx.author.id:
@@ -83,7 +83,7 @@ class DMMixin:
         players = {}
         my_handle = None
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner or data['lurking']:
+            if not data['player'] or not ctx.guild.get_member(mid):
                 continue
             player = data['player']
             if mid == ctx.author.id:

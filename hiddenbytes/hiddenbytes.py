@@ -85,13 +85,12 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         taken_acronyms = set()
         finished_players = 0
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner or data['lurking']:
+            if not data['player'] or not ctx.guild.get_member(mid):
                 continue
             player = data['player']
-            if player:
-                taken_aspects.add(player['aspect'])
-                taken_acronyms.add(player['acronym'])
-                finished_players += 1
+            taken_aspects.add(player['aspect'])
+            taken_acronyms.add(player['acronym'])
+            finished_players += 1
 
         if self.setup_lock.locked():
             return await ctx.send("Another narrator is creating their muse.  Please wait a few minutes and try again.")
@@ -226,10 +225,9 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         blurbs = deepcopy(BLURBS)
         players = []
         for mid, data in (await self.config.all_members(guild)).items():
-            if mid == guild.owner or data['lurking']:
+            if not (member := guild.get_member(mid)):
                 continue
             if not data['player']:
-                member = guild.get_member(mid)
                 await self.make_lurker(guild, member)
                 await member.send("You did not create a muse fast enough, and you have been made"
                                   " a lurker.  You may watch the story unfold if you wish.")
@@ -246,7 +244,7 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         shuffled.append(shuffled.pop(0))
 
         for mid, data in (await self.config.all_members(guild)).items():
-            if mid == guild.owner or data['lurking']:
+            if not data['player'] or not guild.get_member(mid):
                 continue
             member = guild.get_member(mid)
             chan = guild.get_channel(data['channels']['narrator'])
