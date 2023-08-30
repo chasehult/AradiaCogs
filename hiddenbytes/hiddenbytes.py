@@ -279,6 +279,8 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
     async def lurk(self, ctx):
         if await self.config.member(ctx.author).lurking():
             return await ctx.send("You are already lurking in this session.")
+        if await self.config.member(ctx.author).player():
+            return await ctx.send("You already have a muse submitted.  You cannot take that back.")
         if not await get_user_confirmation(ctx, "Are you sure you want to lurk in this session?  You will be able to"
                                                 " see everything, but you will not be able to play.  This command is"
                                                 " irreversable."):
