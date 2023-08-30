@@ -1,3 +1,4 @@
+import discord
 from discord import CategoryChannel
 from redbot.core import Config, checks, commands
 
@@ -47,4 +48,9 @@ class AdminMixin:
         await self.config.guild(ctx.guild).dms.clear()
         for mid in await self.config.all_members(ctx.guild):
             await self.config.member_from_ids(ctx.guild.id, mid).clear()
+        await ctx.tick()
+
+    @admin.command()
+    async def setlurkrole(self, ctx, role: discord.Role):
+        await self.config.guild(ctx.guild).lurk_role.set(role.id)
         await ctx.tick()

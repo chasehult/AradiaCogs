@@ -10,7 +10,7 @@ from discord import PermissionOverwrite
 from redbot.core import Config, commands
 from redbot.core.utils.chat_formatting import humanize_list
 from redbot.core.utils.predicates import MessagePredicate
-from tsutils.user_interaction import StatusManager
+from tsutils.user_interaction import StatusManager, get_user_confirmation
 
 from hiddenbytes.admin_mixin import AdminMixin
 from hiddenbytes.constants import ASPECTS, BLURBS
@@ -27,9 +27,10 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         self.bot = bot
 
         self.config = Config.get_conf(self, identifier=hash('hiddenbytes'))
-        self.config.register_guild(total_players=6, categories={},
+        self.config.register_guild(total_players=6, categories={}, lurk_role=None,
                                    dms={})
-        self.config.register_member(player={}, channels={}, dm_requests=[], sburb_requests=[])
+        self.config.register_member(player={}, channels={}, dm_requests=[], sburb_requests=[],
+                                    lurking=False)
 
         self.setup_lock = asyncio.Lock()
 
@@ -64,7 +65,8 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
                         f" order to start writing your story, you'll need a muse.  Please set one up with `> setup`."
                         f"  Hopefully this step won't take too long.  We'll need to wait for everyone to have a"
                         f" muse before we can start.  If you have any questions at any time, use"
-                        f" `> contact <question>`, and you will receive help as soon as possible.")
+                        f" `> contact <question>`, and you will receive help as soon as possible.  If you plan to lurk"
+                        f" rather than play, use `> lurk`.  This command is not reversable and will be final.")
 
         taken_aspects = set()
         for _, data in (await self.config.all_members(member.guild)).items():
@@ -266,3 +268,15 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
             await chan.send("For some worldbuilding, here is a handful of people your muse may have heard of:")
             for blurb in blurbs[data['player']['species']]:
                 await chan.send("> " + blurb)
+
+    @commands.command()
+    async def lurk(self, ctx):
+        if await self.config.member(ctx.author).lurking():
+            return await ctx.send("You are already lurking in this session.")
+        if not await get_user_confirmation(ctx, "Are you sure you want to lurk in this session?  You will be able to"
+                                                " see everything, but you will not be able to play.  This command is"
+                                                " irreversable."):
+            return await ctx.send("Alright.  You'll stay as a player for now.")
+        await self.config.member(ctx.author).lurking.set(True)
+        await ctx.guild.get_channel((await self.config.member(ctx.author).channels())['narrator']).delete()
+        await ctx.author.add_roles(ctx.guild.get_role(await self.config.guild(ctx.guild).lurk_role()))
