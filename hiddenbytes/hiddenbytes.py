@@ -85,7 +85,7 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         taken_acronyms = set()
         finished_players = 0
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner:
+            if mid == ctx.guild.owner or data['lurking']:
                 continue
             player = data['player']
             if player:
@@ -207,7 +207,7 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
             chans['land'] = land_chan.id
 
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner:
+            if mid == ctx.guild.owner or data['lurking']:
                 continue
             if mid == ctx.author.id:
                 continue
@@ -226,7 +226,13 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         blurbs = deepcopy(BLURBS)
         players = []
         for mid, data in (await self.config.all_members(guild)).items():
-            if mid == guild.owner:
+            if mid == guild.owner or data['lurking']:
+                continue
+            if not data['player']:
+                member = guild.get_member(mid)
+                await self.make_lurker(guild, member)
+                await member.send("You did not create a muse fast enough, and you have been made"
+                                  " a lurker.  You may watch the story unfold if you wish.")
                 continue
             player = data['player']
             if player['blurb']:
@@ -240,7 +246,7 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
         shuffled.append(shuffled.pop(0))
 
         for mid, data in (await self.config.all_members(guild)).items():
-            if mid == guild.owner:
+            if mid == guild.owner or data['lurking']:
                 continue
             member = guild.get_member(mid)
             chan = guild.get_channel(data['channels']['narrator'])
@@ -277,6 +283,9 @@ class HiddenBytes(commands.Cog, AdminMixin, DMMixin, SburbMixin, LandMixin):
                                                 " see everything, but you will not be able to play.  This command is"
                                                 " irreversable."):
             return await ctx.send("Alright.  You'll stay as a player for now.")
-        await self.config.member(ctx.author).lurking.set(True)
-        await ctx.guild.get_channel((await self.config.member(ctx.author).channels())['narrator']).delete()
-        await ctx.author.add_roles(ctx.guild.get_role(await self.config.guild(ctx.guild).lurk_role()))
+        await self.make_lurker(ctx.guild, ctx.author)
+
+    async def make_lurker(self, guild: discord.Guild, member: discord.Member):
+        await self.config.member(member).lurking.set(True)
+        await guild.get_channel((await self.config.member(member).channels())['narrator']).delete()
+        await member.add_roles(guild.get_role(await self.config.guild(guild).lurk_role()))

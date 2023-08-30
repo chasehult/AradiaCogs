@@ -18,7 +18,7 @@ class LandMixin:
     async def travel(self, ctx, user: str):
         players = {}
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner:
+            if mid == ctx.guild.owner or data['lurking']:
                 continue
             player = data['player']
             players[player['handle']] = data['channels']['land']
@@ -33,7 +33,7 @@ class LandMixin:
         players = {}
         my_handle = None
         for mid, data in (await self.config.all_members(ctx.guild)).items():
-            if mid == ctx.guild.owner:
+            if mid == ctx.guild.owner or data['lurking']:
                 continue
             player = data['player']
             if mid == ctx.author.id:
